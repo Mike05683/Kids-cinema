@@ -92,7 +92,7 @@ def is_morning(time_str):
             parts = time_str.split(':')
             hour = int(parts[0])
             minute = int(parts[1]) if len(parts) > 1 else 0
-        return (hour < 12) or (hour == 12 and minute <= 30)
+        return (hour >= 9 and hour < 12) or (hour == 12 and minute <= 30)
     except:
         return False
 
