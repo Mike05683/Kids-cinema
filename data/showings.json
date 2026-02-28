@@ -1,5 +1,5 @@
 {
-  "updated": "Sat 28 Feb 2026 at 22:19",
+  "updated": "Sat 28 Feb 2026 at 22:34",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
@@ -12,64 +12,14 @@
     "showcase_nottingham": {
       "saturday": [
         {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
+          "title": "Family Favourites \u2014 check website for film title",
           "time": "10:00",
           "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
+          "title": "Family Favourites \u2014 check website for film title",
           "time": "10:00",
           "price": "\u00a32.49"
         }
@@ -78,81 +28,25 @@
     "showcase_derby": {
       "saturday": [
         {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
+          "title": "Family Favourites \u2014 check website for film title",
           "time": "10:00",
           "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        },
-        {
-          "title": "Family Favourites Film",
+          "title": "Family Favourites \u2014 check website for film title",
           "time": "10:00",
           "price": "\u00a32.49"
         }
       ]
     },
     "savoy_nottingham": {
-      "saturday": [
-        {
-          "title": "Event Key:",
-          "time": "See website",
-          "price": "\u00a32.15"
-        }
-      ],
+      "saturday": [],
       "sunday": [
         {
-          "title": "KC Kid's Club",
-          "time": "Morning - see website",
+          "title": "Sold Out",
+          "time": "See website",
           "price": "\u00a32.15"
         }
       ]
