@@ -1,26 +1,38 @@
 {
-  "updated": "Sat 28 Feb 2026 at 22:43",
+  "updated": "Sat 28 Feb 2026 at 22:51",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Check website for this week's film",
+          "time": "Morning",
+          "price": "\u00a33.50"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Check website for this week's film",
+          "time": "Morning",
+          "price": "\u00a33.50"
+        }
+      ]
     },
     "showcase_nottingham": {
       "saturday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets to see film",
-          "time": "10:00",
+          "title": "Check website for this week's film",
+          "time": "Morning",
           "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets to see film",
-          "time": "10:00",
+          "title": "Check website for this week's film",
+          "time": "Morning",
           "price": "\u00a32.49"
         }
       ]
@@ -28,26 +40,50 @@
     "showcase_derby": {
       "saturday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets to see film",
-          "time": "10:00",
+          "title": "Check website for this week's film",
+          "time": "Morning",
           "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets to see film",
-          "time": "10:00",
+          "title": "Check website for this week's film",
+          "time": "Morning",
           "price": "\u00a32.49"
         }
       ]
     },
     "savoy_nottingham": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Check website for this week's film",
+          "time": "Morning",
+          "price": "\u00a32.15"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Check website for this week's film",
+          "time": "Morning",
+          "price": "\u00a32.15"
+        }
+      ]
     },
     "odeon_derby": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Check website for this week's film",
+          "time": "Morning",
+          "price": "Odeon Kids"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Check website for this week's film",
+          "time": "Morning",
+          "price": "Odeon Kids"
+        }
+      ]
     }
   }
 }
