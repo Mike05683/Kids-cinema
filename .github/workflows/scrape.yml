@@ -2,14 +2,12 @@ name: Scrape Kids Cinema Showings
 
 on:
   schedule:
-    # Run every Tuesday at 8am UTC (so data is ready by the weekend)
     - cron: '0 8 * * 2'
-  workflow_dispatch:  # Also allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
