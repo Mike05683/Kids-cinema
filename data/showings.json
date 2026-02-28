@@ -1,13 +1,25 @@
 {
-  "updated": "Sat 28 Feb 2026 at 23:20",
+  "updated": "Sat 28 Feb 2026 at 23:28",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Elvis",
+          "time": "See website",
+          "price": "\u00a33.50"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Elvis",
+          "time": "See website",
+          "price": "\u00a33.50"
+        }
+      ]
     },
     "showcase_nottingham": {
       "saturday": [],
@@ -20,62 +32,54 @@
     "savoy_nottingham": {
       "saturday": [
         {
-          "title": "GOAT",
+          "title": "Elvis",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Zootropolis 2",
-          "time": "12:10",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Hoppers",
-          "time": "10:00",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Stitch Head",
-          "time": "10:00",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Animation Program",
-          "time": "10:00",
+          "title": "Elvis",
+          "time": "11:15",
           "price": "\u00a32.15"
         }
       ],
       "sunday": [
         {
-          "title": "GOAT",
+          "title": "Elvis",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Zootropolis 2",
-          "time": "12:10",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Hoppers",
-          "time": "10:00",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Stitch Head",
-          "time": "10:00",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Animation Program",
-          "time": "10:00",
+          "title": "Elvis",
+          "time": "11:15",
           "price": "\u00a32.15"
         }
       ]
     },
     "odeon_derby": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Elvis",
+          "time": "See website",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Sinners",
+          "time": "See website",
+          "price": "Odeon Kids"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Elvis",
+          "time": "See website",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Sinners",
+          "time": "See website",
+          "price": "Odeon Kids"
+        }
+      ]
     }
   }
 }
