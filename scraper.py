@@ -1,65 +1,56 @@
 #!/usr/bin/env python3
 """
-Kids Cinema Weekend Scraper v4
-Uses the CineList API (api.cinelist.co.uk) which pulls from FindAnyFilm.
-Much more reliable than scraping cinema sites directly.
+Kids Cinema Weekend Scraper v5
+Uses IMDB showtimes pages with known cinema IDs.
+IMDB gets data from The Box Office Company and is reliable.
+We scrape the HTML listing pages for Saturday & Sunday morning shows.
 """
 
 import json
 import re
-import sys
 import os
 import time
 from datetime import datetime, timedelta
 import requests
+from bs4 import BeautifulSoup
 
 HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-GB,en;q=0.9',
 }
 
-# CineList cinema IDs - found by searching their API
-# We'll look these up dynamically using postcode search
-CINEMA_CONFIG = {
+# IMDB cinema IDs - confirmed from IMDB showtimes URLs
+CINEMAS = {
     'arc_beeston': {
         'name': 'Arc Cinema Beeston',
-        'search': 'Beeston',
-        'match': 'arc',
+        'imdb_id': 'ci1025115',
         'price': '£3.50',
         'url': 'https://beeston.arccinema.co.uk/whatson/kidsclub',
-        'badge': 'ARC'
     },
     'showcase_nottingham': {
         'name': 'Showcase Nottingham',
-        'search': 'Nottingham',
-        'match': 'showcase',
+        'imdb_id': 'ci0960030',
         'price': '£2.49',
         'url': 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-cinema-de-lux-nottingham',
-        'badge': 'SHOWCASE'
     },
     'showcase_derby': {
         'name': 'Showcase Derby',
-        'search': 'Derby',
-        'match': 'showcase',
+        'imdb_id': 'ci0960015',
         'price': '£2.49',
         'url': 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-derby',
-        'badge': 'SHOWCASE'
     },
     'savoy_nottingham': {
         'name': 'Savoy Cinema Nottingham',
-        'search': 'Nottingham',
-        'match': 'savoy',
+        'imdb_id': 'ci0959999',
         'price': '£2.15',
         'url': 'https://savoyonline.co.uk',
-        'badge': 'SAVOY'
     },
     'odeon_derby': {
         'name': 'Odeon Derby',
-        'search': 'Derby',
-        'match': 'odeon',
+        'imdb_id': 'ci0959806',
         'price': 'Odeon Kids',
         'url': 'https://www.odeon.co.uk/cinemas/derby/161/',
-        'badge': 'ODEON'
-    }
+    },
 }
 
 
@@ -74,79 +65,159 @@ def get_weekend_dates():
 
 
 def is_morning(time_str):
-    """True if time is before 12:30 - the kids club slot."""
+    """True if time is at or before 12:30pm."""
     try:
-        parts = time_str.replace('.', ':').split(':')
-        hour = int(parts[0])
-        minute = int(parts[1]) if len(parts) > 1 else 0
+        # Handle both 24h (10:00) and 12h (10:00 AM) formats
+        time_str = time_str.strip().upper()
+        if 'PM' in time_str:
+            parts = time_str.replace('PM', '').strip().split(':')
+            hour = int(parts[0])
+            if hour != 12:
+                hour += 12
+            minute = int(parts[1]) if len(parts) > 1 else 0
+        elif 'AM' in time_str:
+            parts = time_str.replace('AM', '').strip().split(':')
+            hour = int(parts[0]) % 12
+            minute = int(parts[1]) if len(parts) > 1 else 0
+        else:
+            parts = time_str.split(':')
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
         return (hour < 12) or (hour == 12 and minute <= 30)
     except:
         return False
 
 
-def find_cinema_id(search_term, match_keyword):
-    """Use CineList API to find a cinema's ID by location and name keyword."""
+def format_time(time_str):
+    """Normalise time to HH:MM 24h format."""
     try:
-        url = f'https://api.cinelist.co.uk/search/cinemas/location/{requests.utils.quote(search_term)}'
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        data = r.json()
-        cinemas = data.get('cinemas', [])
-        for cinema in cinemas:
-            name = cinema.get('name', '').lower()
-            if match_keyword.lower() in name:
-                print(f"  Found: {cinema['name']} (ID: {cinema['id']})")
-                return cinema['id']
-        print(f"  No match for '{match_keyword}' in {search_term}. Available: {[c['name'] for c in cinemas[:5]]}")
-    except Exception as e:
-        print(f"  Cinema search error for {search_term}: {e}", file=sys.stderr)
-    return None
+        time_str = time_str.strip().upper()
+        if 'PM' in time_str:
+            parts = time_str.replace('PM', '').strip().split(':')
+            hour = int(parts[0])
+            if hour != 12:
+                hour += 12
+            minute = int(parts[1]) if len(parts) > 1 else 0
+        elif 'AM' in time_str:
+            parts = time_str.replace('AM', '').strip().split(':')
+            hour = int(parts[0]) % 12
+            minute = int(parts[1]) if len(parts) > 1 else 0
+        else:
+            parts = time_str.split(':')
+            hour = int(parts[0])
+            minute = int(parts[1]) if len(parts) > 1 else 0
+        return f"{hour:02d}:{minute:02d}"
+    except:
+        return time_str
 
 
-def get_showings_for_day(cinema_id, day_offset):
-    """Get all showings for a cinema on a given day offset (0=today, 1=tomorrow etc)."""
+def scrape_imdb_showtimes(cinema_id, date_str):
+    """
+    Scrape IMDB showtimes page for a cinema on a given date.
+    Returns list of {'title': ..., 'time': ...} for morning shows.
+    date_str format: YYYY-MM-DD
+    """
+    url = f'https://www.imdb.com/showtimes/cinema/UK/{cinema_id}/?date={date_str}'
+    print(f"  Fetching: {url}")
+
     try:
-        url = f'https://api.cinelist.co.uk/get/times/cinema/{cinema_id}?day={day_offset}'
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        data = r.json()
-        return data.get('listings', [])
+        r = requests.get(url, headers=HEADERS, timeout=20)
+        if r.status_code != 200:
+            print(f"  HTTP {r.status_code}")
+            return []
+
+        soup = BeautifulSoup(r.text, 'html.parser')
+        results = []
+
+        # IMDB showtimes structure: each film is in an article or div
+        # Film title in h3 or .lister-item-header, times in .showtimes-list or similar
+        film_blocks = soup.find_all('div', class_=re.compile(r'list[-_]item|lister[-_]item', re.I))
+
+        if not film_blocks:
+            # Try alternative structure
+            film_blocks = soup.find_all('article')
+
+        if not film_blocks:
+            # Try finding all h3 tags with film titles
+            film_blocks = soup.find_all(['div', 'section'], attrs={'data-testid': re.compile(r'film|movie|show', re.I)})
+
+        print(f"  Found {len(film_blocks)} film blocks")
+
+        for block in film_blocks:
+            # Get film title
+            title_el = (block.find('h3') or
+                       block.find('h4') or
+                       block.find(class_=re.compile(r'title|name', re.I)))
+
+            if not title_el:
+                continue
+
+            title = title_el.get_text(strip=True)
+            # Clean up title (remove cert, year etc)
+            title = re.sub(r'\s*\(\d{4}\)\s*$', '', title).strip()
+            title = re.sub(r'\s*(PG|U|12A|15|18)\s*$', '', title).strip()
+
+            if not title or len(title) < 2:
+                continue
+
+            # Get times
+            times_text = block.get_text()
+            time_matches = re.findall(r'\b(\d{1,2}:\d{2}\s*(?:AM|PM)?)\b', times_text, re.I)
+
+            for t in time_matches:
+                if is_morning(t):
+                    results.append({
+                        'title': title,
+                        'time': format_time(t)
+                    })
+
+        # If block parsing failed, try raw text parsing
+        if not results:
+            print("  Block parsing failed, trying text parse...")
+            text = soup.get_text(separator='\n')
+            lines = [l.strip() for l in text.split('\n') if l.strip()]
+
+            current_title = None
+            for line in lines:
+                # Detect film titles: capitalised, reasonable length, not a UI element
+                if (len(line) > 3 and len(line) < 100
+                        and line[0].isupper()
+                        and not re.search(r'(showtimes|book|buy|select|screen|imdb|sign|log|menu|filter|today|tomorrow|back|next|prev)', line, re.I)
+                        and not re.search(r'^\d', line)
+                        and not re.search(r'(PG|12A|15|18|cert|\bU\b)', line)):
+                    current_title = line
+
+                time_matches = re.findall(r'\b(\d{1,2}:\d{2}\s*(?:AM|PM)?)\b', line, re.I)
+                for t in time_matches:
+                    if is_morning(t) and current_title:
+                        results.append({
+                            'title': current_title,
+                            'time': format_time(t)
+                        })
+
+        # Deduplicate
+        seen = set()
+        deduped = []
+        for item in results:
+            k = item['title'] + item['time']
+            if k not in seen:
+                seen.add(k)
+                deduped.append(item)
+
+        print(f"  -> {len(deduped)} morning shows found")
+        return deduped
+
     except Exception as e:
-        print(f"  Showings fetch error: {e}", file=sys.stderr)
+        print(f"  Error: {e}")
         return []
-
-
-def filter_morning_showings(listings, price, kids_focus=False):
-    """Filter listings to morning shows only (kids club slot)."""
-    results = []
-    for film in listings:
-        title = film.get('title', 'Unknown Film')
-        times = film.get('times', [])
-        morning_times = [t for t in times if is_morning(t)]
-
-        # If kids_focus, only include if it looks like a family/kids film
-        # Otherwise include all morning showings
-        if morning_times:
-            for t in morning_times:
-                results.append({
-                    'title': title,
-                    'time': t,
-                    'price': price
-                })
-    return results
-
-
-def calculate_day_offset(target_date):
-    """Calculate how many days from today the target date is."""
-    today = datetime.today().date()
-    delta = target_date.date() - today
-    return delta.days
 
 
 def main():
     saturday, sunday = get_weekend_dates()
-    sat_offset = calculate_day_offset(saturday)
-    sun_offset = calculate_day_offset(sunday)
+    sat_str = saturday.strftime('%Y-%m-%d')
+    sun_str = sunday.strftime('%Y-%m-%d')
 
-    print(f"Scraping for: {saturday.strftime('%A %d %b')} (offset +{sat_offset}) & {sunday.strftime('%A %d %b')} (offset +{sun_offset})")
+    print(f"Scraping for: {saturday.strftime('%A %d %b')} & {sunday.strftime('%A %d %b')}")
 
     output = {
         'updated': datetime.now().strftime('%a %d %b %Y at %H:%M'),
@@ -157,31 +228,22 @@ def main():
         'cinemas': {}
     }
 
-    for cinema_key, config in CINEMA_CONFIG.items():
-        print(f"\nLooking up: {config['name']}")
-        cinema_id = find_cinema_id(config['search'], config['match'])
+    for key, config in CINEMAS.items():
+        print(f"\n{config['name']}:")
 
-        if cinema_id:
-            time.sleep(1)  # Be polite to the API
-            sat_listings = get_showings_for_day(cinema_id, sat_offset)
-            time.sleep(1)
-            sun_listings = get_showings_for_day(cinema_id, sun_offset)
+        sat_shows = scrape_imdb_showtimes(config['imdb_id'], sat_str)
+        time.sleep(2)
+        sun_shows = scrape_imdb_showtimes(config['imdb_id'], sun_str)
+        time.sleep(2)
 
-            sat_showings = filter_morning_showings(sat_listings, config['price'])
-            sun_showings = filter_morning_showings(sun_listings, config['price'])
+        # Add price to each showing
+        for show in sat_shows + sun_shows:
+            show['price'] = config['price']
 
-            print(f"  Sat: {len(sat_showings)} morning shows, Sun: {len(sun_showings)} morning shows")
-
-            output['cinemas'][cinema_key] = {
-                'saturday': sat_showings,
-                'sunday': sun_showings
-            }
-        else:
-            # Cinema not found in CineList - use fallback
-            output['cinemas'][cinema_key] = {
-                'saturday': [{'title': 'Check website for this week\'s film', 'time': 'Morning', 'price': config['price']}],
-                'sunday': [{'title': 'Check website for this week\'s film', 'time': 'Morning', 'price': config['price']}]
-            }
+        output['cinemas'][key] = {
+            'saturday': sat_shows,
+            'sunday': sun_shows
+        }
 
     os.makedirs('data', exist_ok=True)
     with open('data/showings.json', 'w') as f:
