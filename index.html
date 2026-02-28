@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎬 Kids Cinema Weekend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Fredoka+One&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --yellow: #FFD600;
+      --orange: #FF6B35;
+      --teal: #00B4D8;
+      --navy: #03045E;
+      --pink: #FF4D8D;
+      --cream: #FFF8F0;
+      --card-bg: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--cream);
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      padding-bottom: 40px;
+      background-image:
+        radial-gradient(circle at 10% 20%, rgba(255,214,0,0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(0,180,216,0.15) 0%, transparent 40%);
+    }
+
+    header {
+      background: var(--navy);
+      color: white;
+      text-align: center;
+      padding: 24px 16px 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      bottom: -2px; left: 0; right: 0;
+      height: 8px;
+      background: repeating-linear-gradient(90deg, var(--yellow) 0px, var(--yellow) 20px, var(--orange) 20px, var(--orange) 40px, var(--pink) 40px, var(--pink) 60px, var(--teal) 60px, var(--teal) 80px);
+    }
+
+    h1 {
+      font-family: 'Fredoka One', cursive;
+      font-size: 2.2rem;
+      letter-spacing: 1px;
+      color: var(--yellow);
+      text-shadow: 2px 2px 0 var(--orange);
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.7);
+      margin-top: 4px;
+    }
+
+    .weekend-label {
+      display: inline-block;
+      background: var(--orange);
+      color: white;
+      font-weight: 900;
+      font-size: 0.8rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-top: 8px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .updated {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 6px;
+    }
+
+    .day-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 20px 16px 8px;
+    }
+
+    .tab-btn {
+      background: white;
+      border: 2.5px solid var(--navy);
+      border-radius: 30px;
+      padding: 8px 24px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      font-size: 1rem;
+      cursor: pointer;
+      color: var(--navy);
+      transition: all 0.2s;
+      box-shadow: 3px 3px 0 var(--navy);
+    }
+
+    .tab-btn.active {
+      background: var(--navy);
+      color: var(--yellow);
+      box-shadow: none;
+      transform: translate(2px, 2px);
+    }
+
+    .tab-btn:hover:not(.active) {
+      transform: translate(-1px, -1px);
+      box-shadow: 4px 4px 0 var(--navy);
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 12px 16px;
+    }
+
+    .cinema-card {
+      background: var(--card-bg);
+      border: 2.5px solid var(--navy);
+      border-radius: 16px;
+      margin-bottom: 14px;
+      overflow: hidden;
+      box-shadow: 4px 4px 0 var(--navy);
+      animation: slideUp 0.3s ease both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .cinema-header {
+      padding: 12px 16px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .cinema-name {
+      font-family: 'Fredoka One', cursive;
+      font-size: 1.2rem;
+      color: var(--navy);
+    }
+
+    .cinema-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-arc    { background: #FFD600; color: #03045E; }
+    .badge-showcase { background: #00B4D8; color: white; }
+    .badge-savoy  { background: #FF4D8D; color: white; }
+    .badge-odeon  { background: #FF6B35; color: white; }
+
+    .showing-list {
+      padding: 10px 16px 12px;
+    }
+
+    .showing-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px dashed #e8e8e8;
+    }
+
+    .showing-item:last-child { border-bottom: none; }
+
+    .film-title {
+      font-weight: 700;
+      color: var(--navy);
+      font-size: 0.95rem;
+      flex: 1;
+    }
+
+    .film-time {
+      font-weight: 900;
+      color: var(--orange);
+      font-size: 0.95rem;
+      margin-left: 12px;
+      white-space: nowrap;
+    }
+
+    .film-price {
+      font-size: 0.78rem;
+      color: #666;
+      background: #f5f5f5;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+
+    .no-showings {
+      padding: 16px;
+      text-align: center;
+      color: #aaa;
+      font-style: italic;
+      font-size: 0.9rem;
+    }
+
+    .book-link {
+      display: block;
+      text-align: right;
+      padding: 6px 16px 10px;
+      font-size: 0.8rem;
+      color: var(--teal);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .book-link:hover { text-decoration: underline; }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--navy);
+      font-size: 1.1rem;
+    }
+
+    .loading span {
+      display: inline-block;
+      animation: bounce 0.6s infinite alternate;
+    }
+    .loading span:nth-child(2) { animation-delay: 0.1s; }
+    .loading span:nth-child(3) { animation-delay: 0.2s; }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-8px); }
+    }
+
+    .error-msg {
+      background: #fff0f0;
+      border: 2px solid #ffcccc;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+      text-align: center;
+      color: #cc3333;
+      font-size: 0.9rem;
+    }
+
+    .refresh-btn {
+      display: block;
+      margin: 8px auto 0;
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 6px 20px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #aaa;
+      padding: 20px 16px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🎬 Kids Cinema Weekend</h1>
+  <div class="subtitle">Nottingham &amp; Derby area • Kids club &amp; family morning shows</div>
+  <div class="weekend-label" id="weekend-label">This weekend</div>
+  <div class="updated" id="updated-label">Loading data...</div>
+</header>
+
+<div class="day-tabs">
+  <button class="tab-btn active" onclick="showDay('saturday')" id="tab-sat">Saturday</button>
+  <button class="tab-btn" onclick="showDay('sunday')" id="tab-sun">Sunday</button>
+</div>
+
+<div class="container" id="content">
+  <div class="loading">
+    <span>🎥</span><span>🍿</span><span>🎬</span>
+    <p style="margin-top:12px">Loading showings...</p>
+  </div>
+</div>
+
+<footer>
+  Data refreshed weekly via GitHub Actions. Always check cinema websites to confirm times before booking.
+</footer>
+
+<script>
+  let allData = null;
+  let currentDay = 'saturday';
+
+  const CINEMA_INFO = {
+    arc_beeston: {
+      name: 'Arc Cinema Beeston',
+      badge: 'badge-arc',
+      label: 'ARC',
+      url: 'https://beeston.arccinema.co.uk/whatson/kidsclub',
+      price: '£3.50'
+    },
+    showcase_nottingham: {
+      name: 'Showcase Nottingham',
+      badge: 'badge-showcase',
+      label: 'SHOWCASE',
+      url: 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-cinema-de-lux-nottingham',
+      price: '£2.49'
+    },
+    showcase_derby: {
+      name: 'Showcase Derby',
+      badge: 'badge-showcase',
+      label: 'SHOWCASE',
+      url: 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-derby',
+      price: '£2.49'
+    },
+    savoy_nottingham: {
+      name: 'Savoy Cinema Nottingham',
+      badge: 'badge-savoy',
+      label: 'SAVOY',
+      url: 'https://savoyonline.co.uk',
+      price: '£2.15'
+    },
+    odeon_derby: {
+      name: 'Odeon Derby',
+      badge: 'badge-odeon',
+      label: 'ODEON',
+      url: 'https://www.odeon.co.uk/cinemas/derby/161/',
+      price: 'Odeon Kids'
+    }
+  };
+
+  async function loadData() {
+    try {
+      const res = await fetch('data/showings.json?t=' + Date.now());
+      if (!res.ok) throw new Error('No data yet');
+      allData = await res.json();
+
+      // Show weekend dates
+      if (allData.weekend_dates) {
+        document.getElementById('weekend-label').textContent =
+          allData.weekend_dates.saturday + ' & ' + allData.weekend_dates.sunday;
+      }
+      if (allData.updated) {
+        document.getElementById('updated-label').textContent =
+          'Updated: ' + allData.updated;
+      }
+
+      renderDay(currentDay);
+    } catch (e) {
+      document.getElementById('content').innerHTML = `
+        <div class="error-msg">
+          <strong>No data loaded yet.</strong><br>
+          The GitHub Actions scraper may not have run yet. Check back later or run the scraper manually.
+          <br><br>
+          <a href="https://beeston.arccinema.co.uk/whatson/kidsclub" target="_blank" style="color:var(--teal)">Arc Beeston Kids Club</a> •
+          <a href="https://www.showcasecinemas.co.uk/family-favourites/" target="_blank" style="color:var(--teal)">Showcase Family Favourites</a> •
+          <a href="https://savoyonline.co.uk" target="_blank" style="color:var(--teal)">Savoy Nottingham</a> •
+          <a href="https://www.odeon.co.uk/cinemas/derby/161/" target="_blank" style="color:var(--teal)">Odeon Derby</a>
+        </div>`;
+    }
+  }
+
+  function showDay(day) {
+    currentDay = day;
+    document.getElementById('tab-sat').classList.toggle('active', day === 'saturday');
+    document.getElementById('tab-sun').classList.toggle('active', day === 'sunday');
+    if (allData) renderDay(day);
+  }
+
+  function renderDay(day) {
+    const container = document.getElementById('content');
+    let html = '';
+
+    for (const [key, info] of Object.entries(CINEMA_INFO)) {
+      const cinemaData = allData.cinemas?.[key];
+      const showings = cinemaData?.[day] || [];
+
+      html += `<div class="cinema-card" style="animation-delay:${Object.keys(CINEMA_INFO).indexOf(key) * 0.05}s">
+        <div class="cinema-header">
+          <div class="cinema-name">${info.name}</div>
+          <span class="cinema-badge ${info.badge}">${info.label}</span>
+        </div>
+        <div class="showing-list">`;
+
+      if (showings.length === 0) {
+        html += `<div class="no-showings">No kids club showings found for this day</div>`;
+      } else {
+        for (const s of showings) {
+          html += `<div class="showing-item">
+            <span class="film-title">${s.title}</span>
+            <span class="film-time">${s.time}</span>
+            <span class="film-price">${s.price || info.price}</span>
+          </div>`;
+        }
+      }
+
+      html += `</div>
+        <a class="book-link" href="${info.url}" target="_blank">Book tickets →</a>
+      </div>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  loadData();
+</script>
+</body>
+</html>
