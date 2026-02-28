@@ -19,10 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install playwright beautifulsoup4
-          playwright install chromium
-          playwright install-deps chromium
+        run: pip install requests
 
       - name: Run scraper
         run: python scraper.py
