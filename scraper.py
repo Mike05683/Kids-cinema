@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Kids Cinema Weekend Scraper - Playwright version
-Uses a headless browser to handle JavaScript-rendered cinema sites.
+Kids Cinema Weekend Scraper v3
+Strategy: Use Playwright to load each cinema's listings page for Saturday/Sunday,
+then grab ALL morning showings (before 12:30pm) as these are the kids club slots.
+This avoids relying on "KC" or "Family Favourites" labels which are hard to find.
 """
 
 import json
@@ -23,77 +25,81 @@ def get_weekend_dates():
     return saturday, sunday
 
 
+def is_morning(time_str):
+    """Return True if time is before 12:30pm - likely a kids/family showing."""
+    try:
+        parts = time_str.replace('.', ':').split(':')
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+        return (hour < 12) or (hour == 12 and minute <= 30)
+    except:
+        return False
+
+
+def is_kids_title(title):
+    """Return True if title looks like a kids film (extra check)."""
+    ADULT_KEYWORDS = ['horror', 'thriller', 'rated 15', 'rated 18', '15 cert', '18 cert']
+    return not any(kw in title.lower() for kw in ADULT_KEYWORDS)
+
+
 async def scrape_arc_beeston(page, saturday, sunday):
-    """Arc Cinema Beeston - kids club page."""
+    """Arc Cinema Beeston - Kids Club every Sat & Sun ~11am."""
     results = {'saturday': [], 'sunday': []}
     try:
+        # Go to their kids club page
         await page.goto('https://beeston.arccinema.co.uk/whatson/kidsclub', timeout=30000)
         await page.wait_for_load_state('networkidle', timeout=20000)
 
-        content = await page.content()
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(content, 'html.parser')
+        # Get all text
+        body = await page.inner_text('body')
+        lines = [l.strip() for l in body.split('\n') if l.strip()]
 
-        sat_str = saturday.strftime('%Y-%m-%d')
-        sun_str = sunday.strftime('%Y-%m-%d')
-        sat_display = saturday.strftime('%-d %B')
+        sat_display = saturday.strftime('%-d %B')   # e.g. "7 March"
         sun_display = sunday.strftime('%-d %B')
+        sat_short   = saturday.strftime('%a %-d')   # e.g. "Sat 7"
+        sun_short   = sunday.strftime('%a %-d')
 
-        # Arc cinema - find film blocks with dates
-        # Try JSON-LD structured data first
-        for script in soup.find_all('script', type='application/ld+json'):
-            try:
-                data = json.loads(script.string)
-                if isinstance(data, list):
-                    items = data
-                elif isinstance(data, dict):
-                    items = [data]
-                else:
-                    items = []
-                for item in items:
-                    start = item.get('startDate', '')
-                    name = item.get('name', '')
-                    if sat_str in start:
-                        results['saturday'].append({'title': name, 'time': start[11:16] if len(start) > 10 else 'See site', 'price': '£3.50'})
-                    elif sun_str in start:
-                        results['sunday'].append({'title': name, 'time': start[11:16] if len(start) > 10 else 'See site', 'price': '£3.50'})
-            except:
-                pass
+        current_day = None
+        i = 0
+        while i < len(lines):
+            line = lines[i]
 
-        # Try finding film/session elements
-        if not results['saturday'] and not results['sunday']:
-            # Look for links containing the date strings
-            for a in soup.find_all('a', href=True):
-                href = a['href']
-                text = a.get_text(strip=True)
-                if sat_str in href and text:
-                    results['saturday'].append({'title': text, 'time': 'See site', 'price': '£3.50'})
-                elif sun_str in href and text:
-                    results['sunday'].append({'title': text, 'time': 'See site', 'price': '£3.50'})
+            # Detect which day we're looking at
+            if sat_display in line or sat_short in line or saturday.strftime('%d/%m') in line:
+                current_day = 'saturday'
+            elif sun_display in line or sun_short in line or sunday.strftime('%d/%m') in line:
+                current_day = 'sunday'
 
-        # Try Playwright locators for film titles visible on page
-        if not results['saturday'] and not results['sunday']:
-            # Get all text containing the weekend dates
-            full_text = await page.inner_text('body')
-            lines = [l.strip() for l in full_text.split('\n') if l.strip()]
-            
-            current_day = None
-            for i, line in enumerate(lines):
-                if sat_display in line or saturday.strftime('%d/%m') in line:
-                    current_day = 'saturday'
-                elif sun_display in line or sunday.strftime('%d/%m') in line:
-                    current_day = 'sunday'
-                
-                # Time pattern - likely a showing time
-                time_match = re.search(r'\b(\d{1,2}:\d{2})\b', line)
-                if time_match and current_day and i > 0:
-                    title = lines[i-1] if i > 0 else 'Kids Club Film'
-                    if len(title) > 3 and not re.search(r'^\d', title):
-                        results[current_day].append({
-                            'title': title,
-                            'time': time_match.group(1),
-                            'price': '£3.50'
-                        })
+            # Detect a time on this line
+            time_match = re.search(r'\b(\d{1,2}[:.]\d{2})\b', line)
+            if time_match and current_day:
+                time_str = time_match.group(1).replace('.', ':')
+                if is_morning(time_str):
+                    # Film title is usually 1-3 lines before the time
+                    title = 'Kids Club Film'
+                    for j in range(max(0, i-4), i):
+                        candidate = lines[j]
+                        if (len(candidate) > 3
+                                and not re.search(r'(\d{1,2}[:.]\d{2}|book|cert|pg|uu\b|rating|kids.club|£)', candidate, re.I)
+                                and len(candidate) < 80):
+                            title = candidate
+                    results[current_day].append({
+                        'title': title,
+                        'time': time_str,
+                        'price': '£3.50'
+                    })
+            i += 1
+
+        # Deduplicate
+        for day in ['saturday', 'sunday']:
+            seen = set()
+            deduped = []
+            for item in results[day]:
+                k = item['title'] + item['time']
+                if k not in seen:
+                    seen.add(k)
+                    deduped.append(item)
+            results[day] = deduped
 
         print(f"Arc Beeston: Sat={len(results['saturday'])}, Sun={len(results['sunday'])}")
     except Exception as e:
@@ -102,120 +108,165 @@ async def scrape_arc_beeston(page, saturday, sunday):
 
 
 async def scrape_showcase(page, cinema_slug, cinema_name, saturday, sunday):
-    """Showcase cinemas - Family Favourites showings."""
+    """Showcase - grab all morning showings on Sat/Sun (Family Favourites is always ~10am)."""
     results = {'saturday': [], 'sunday': []}
     try:
         for day_date, day_key in [(saturday, 'saturday'), (sunday, 'sunday')]:
             day_str = day_date.strftime('%Y-%m-%d')
             url = f'https://www.showcasecinemas.co.uk/whats-on/?cinema={cinema_slug}&date={day_str}'
+
             await page.goto(url, timeout=30000)
-            await page.wait_for_load_state('networkidle', timeout=25000)
-
-            # Wait for film listings to appear
+            # Wait for film listings to load
             try:
-                await page.wait_for_selector('[class*="film"], [class*="movie"], [class*="listing"]', timeout=10000)
+                await page.wait_for_selector('[class*="film"], [class*="listing"], [class*="movie"]', timeout=12000)
             except:
-                pass
+                await page.wait_for_timeout(4000)
 
-            full_text = await page.inner_text('body')
-            lines = [l.strip() for l in full_text.split('\n') if l.strip()]
+            # Try to get structured data from the page
+            # Showcase sometimes embeds JSON in script tags
+            scripts = await page.query_selector_all('script[type="application/ld+json"]')
+            for script in scripts:
+                try:
+                    content = await script.inner_text()
+                    data = json.loads(content)
+                    events = data if isinstance(data, list) else [data]
+                    for event in events:
+                        start = event.get('startDate', '')
+                        name = event.get('name', '')
+                        if day_str in start and name:
+                            time_str = start[11:16] if len(start) >= 16 else ''
+                            if time_str and is_morning(time_str):
+                                results[day_key].append({
+                                    'title': name,
+                                    'time': time_str,
+                                    'price': '£2.49'
+                                })
+                except:
+                    pass
 
-            # Find Family Favourites showings
-            i = 0
-            while i < len(lines):
-                line = lines[i]
-                if re.search(r'family.favour|FF\b', line, re.I):
-                    # Title is likely nearby - look back
-                    title = 'Family Favourites Film'
-                    for j in range(max(0, i-5), i):
-                        candidate = lines[j]
-                        if len(candidate) > 3 and not re.search(r'(book|buy|select|certificate|\bU\b|\bPG\b|\d+min)', candidate, re.I):
-                            title = candidate
-                    # Time
-                    time_str = '10:00'
-                    for j in range(i, min(len(lines), i+5)):
-                        t = re.search(r'\b(\d{1,2}:\d{2})\b', lines[j])
-                        if t:
-                            time_str = t.group(1)
-                            break
-                    results[day_key].append({'title': title, 'time': time_str, 'price': '£2.49'})
-                i += 1
+            # If no structured data, fall back to text parsing
+            if not results[day_key]:
+                body = await page.inner_text('body')
+                lines = [l.strip() for l in body.split('\n') if l.strip()]
 
-            # Deduplicate by title+time
+                i = 0
+                while i < len(lines):
+                    line = lines[i]
+                    time_match = re.search(r'\b(\d{1,2}[:.]\d{2})\b', line)
+                    if time_match:
+                        time_str = time_match.group(1).replace('.', ':')
+                        if is_morning(time_str):
+                            # Look back for a film title
+                            title = 'Family Favourites Film'
+                            for j in range(max(0, i-6), i):
+                                candidate = lines[j]
+                                if (len(candidate) > 3
+                                        and not re.search(r'(\d{1,2}[:.]\d{2}|book|cert|pg\b|uu\b|rating|£|showing|screen)', candidate, re.I)
+                                        and len(candidate) < 100
+                                        and candidate[0].isupper()):
+                                    title = candidate
+                            results[day_key].append({
+                                'title': title,
+                                'time': time_str,
+                                'price': '£2.49'
+                            })
+                    i += 1
+
+            # Deduplicate
             seen = set()
             deduped = []
             for item in results[day_key]:
-                key = item['title'] + item['time']
-                if key not in seen:
-                    seen.add(key)
+                k = item['title'] + item['time']
+                if k not in seen:
+                    seen.add(k)
                     deduped.append(item)
             results[day_key] = deduped
 
-            # If still nothing, add a placeholder (Showcase ALWAYS has FF on weekends)
+            # Fallback if still nothing
             if not results[day_key]:
-                results[day_key] = [{'title': 'Family Favourites — check website for film title', 'time': '10:00', 'price': '£2.49'}]
+                results[day_key] = [{
+                    'title': 'Family Favourites — tap Book tickets to see film',
+                    'time': '10:00',
+                    'price': '£2.49'
+                }]
 
         print(f"{cinema_name}: Sat={len(results['saturday'])}, Sun={len(results['sunday'])}")
     except Exception as e:
         print(f"{cinema_name} error: {e}", file=sys.stderr)
-        results['saturday'] = [{'title': 'Family Favourites — check website', 'time': '10:00', 'price': '£2.49'}]
-        results['sunday'] = [{'title': 'Family Favourites — check website', 'time': '10:00', 'price': '£2.49'}]
+        results['saturday'] = [{'title': 'Family Favourites — tap Book tickets', 'time': '10:00', 'price': '£2.49'}]
+        results['sunday'] = [{'title': 'Family Favourites — tap Book tickets', 'time': '10:00', 'price': '£2.49'}]
     return results
 
 
 async def scrape_savoy(page, saturday, sunday):
-    """Savoy Cinema Nottingham - Kids Club (marked KC)."""
+    """Savoy Nottingham - grab morning showings."""
     results = {'saturday': [], 'sunday': []}
     try:
         await page.goto('https://savoyonline.co.uk', timeout=30000)
         await page.wait_for_load_state('networkidle', timeout=20000)
 
-        sat_display = saturday.strftime('%-d %b').upper()
-        sun_display = sunday.strftime('%-d %b').upper()
-        sat_day = saturday.strftime('%A').upper()
-        sun_day = sunday.strftime('%A').upper()
+        # Check for an iframe - Savoy sometimes embeds their listings
+        frames = page.frames
+        target_frame = page
+        for frame in frames:
+            url = frame.url
+            if 'savoy' in url.lower() and frame != page.main_frame:
+                target_frame = frame
+                break
 
-        full_text = await page.inner_text('body')
-        lines = [l.strip() for l in full_text.split('\n') if l.strip()]
+        body = await target_frame.inner_text('body')
+        lines = [l.strip() for l in body.split('\n') if l.strip()]
+
+        sat_display = saturday.strftime('%-d %b')    # e.g. "7 Mar"
+        sun_display = sunday.strftime('%-d %b')
+        sat_long    = saturday.strftime('%A')         # e.g. "Saturday"
+        sun_long    = sunday.strftime('%A')
 
         current_day = None
-        current_title = None
-
         i = 0
         while i < len(lines):
             line = lines[i]
 
-            # Detect day headers
-            if sat_display in line.upper() or sat_day in line.upper():
+            # Day detection
+            if sat_display.lower() in line.lower() or sat_long.lower() in line.lower():
                 current_day = 'saturday'
-            elif sun_display in line.upper() or sun_day in line.upper():
+            elif sun_display.lower() in line.lower() or sun_long.lower() in line.lower():
                 current_day = 'sunday'
 
-            # Detect KC (Kids Club) marker
+            # Look for KC marker (Kids Club)
             if re.search(r'\bKC\b', line) and current_day:
-                # Title is nearby - look around
-                title = 'Kids Club Film'
                 time_str = 'See website'
+                time_match = re.search(r'\b(\d{1,2}[:.]\d{2})\b', line)
+                if time_match:
+                    time_str = time_match.group(1).replace('.', ':')
 
-                for j in range(max(0, i-4), i):
+                # Find title nearby
+                title = 'Kids Club Film'
+                for j in range(max(0, i-5), i):
                     candidate = lines[j]
                     if (len(candidate) > 3
-                            and not re.search(r'(KC|PG|CERT|\d+:\d+|BOOK|BUY)', candidate, re.I)
-                            and not re.search(r'^(SAT|SUN|MON|TUE|WED|THU|FRI)', candidate)):
+                            and not re.search(r'(KC|PG|cert|\d{1,2}[:.]\d{2}|book|saturday|sunday)', candidate, re.I)
+                            and len(candidate) < 80
+                            and candidate[0].isupper()):
                         title = candidate
 
-                # Look for time
-                time_match = re.search(r'\b(\d{1,2}:\d{2})\b', line)
-                if time_match:
-                    time_str = time_match.group(1)
-                else:
-                    for j in range(i, min(len(lines), i+3)):
-                        t = re.search(r'\b(\d{1,2}:\d{2})\b', lines[j])
-                        if t:
-                            time_str = t.group(1)
-                            break
-
                 results[current_day].append({'title': title, 'time': time_str, 'price': '£2.15'})
+
+            # Also catch morning times even without KC label
+            elif current_day:
+                time_match = re.search(r'\b(\d{1,2}[:.]\d{2})\b', line)
+                if time_match:
+                    time_str = time_match.group(1).replace('.', ':')
+                    if is_morning(time_str):
+                        title = 'Kids Club Film'
+                        for j in range(max(0, i-4), i):
+                            candidate = lines[j]
+                            if (len(candidate) > 3
+                                    and not re.search(r'(PG|cert|\d{1,2}[:.]\d{2}|book|saturday|sunday|£)', candidate, re.I)
+                                    and len(candidate) < 80
+                                    and candidate[0].isupper()):
+                                title = candidate
+                        results[current_day].append({'title': title, 'time': time_str, 'price': '£2.15'})
 
             i += 1
 
@@ -237,47 +288,75 @@ async def scrape_savoy(page, saturday, sunday):
 
 
 async def scrape_odeon(page, saturday, sunday):
-    """Odeon Derby - Odeon Kids screenings."""
+    """Odeon Derby - morning showings (Odeon Kids is always before noon)."""
     results = {'saturday': [], 'sunday': []}
     try:
         for day_date, day_key in [(saturday, 'saturday'), (sunday, 'sunday')]:
             day_str = day_date.strftime('%Y-%m-%d')
             url = f'https://www.odeon.co.uk/cinemas/derby/161/?date={day_str}'
+
             await page.goto(url, timeout=30000)
-            await page.wait_for_load_state('networkidle', timeout=25000)
-
             try:
-                await page.wait_for_selector('[class*="film-title"], [class*="filmTitle"], h2, h3', timeout=10000)
+                await page.wait_for_selector('[class*="film"], [data-testid*="film"], h2, h3', timeout=12000)
             except:
-                pass
+                await page.wait_for_timeout(5000)
 
-            full_text = await page.inner_text('body')
-            lines = [l.strip() for l in full_text.split('\n') if l.strip()]
+            # Try JSON-LD first
+            scripts = await page.query_selector_all('script[type="application/ld+json"]')
+            for script in scripts:
+                try:
+                    content = await script.inner_text()
+                    data = json.loads(content)
+                    events = data if isinstance(data, list) else [data]
+                    for event in events:
+                        start = event.get('startDate', '')
+                        name = event.get('name', '')
+                        if day_str in start and name:
+                            time_str = start[11:16] if len(start) >= 16 else ''
+                            if time_str and is_morning(time_str) and is_kids_title(name):
+                                results[day_key].append({
+                                    'title': name,
+                                    'time': time_str,
+                                    'price': 'Odeon Kids'
+                                })
+                except:
+                    pass
 
-            i = 0
-            while i < len(lines):
-                line = lines[i]
-                # Odeon Kids showings are flagged with "Odeon Kids" or "Kids" tag
-                if re.search(r'odeon.kids|kids.screening', line, re.I):
-                    title = 'Odeon Kids Film'
-                    time_str = 'Morning'
+            # Text fallback
+            if not results[day_key]:
+                body = await page.inner_text('body')
+                lines = [l.strip() for l in body.split('\n') if l.strip()]
 
-                    for j in range(max(0, i-6), i):
-                        candidate = lines[j]
-                        if (len(candidate) > 3
-                                and not re.search(r'(kids|cert|pg|book|rating|\d+min)', candidate, re.I)):
-                            title = candidate
+                i = 0
+                current_title = None
+                while i < len(lines):
+                    line = lines[i]
 
-                    for j in range(i, min(len(lines), i+4)):
-                        t = re.search(r'\b(\d{1,2}:\d{2})\b', lines[j])
-                        if t:
-                            hour = int(t.group(1).split(':')[0])
-                            if hour < 13:  # Morning shows only
-                                time_str = t.group(1)
+                    # Odeon Kids label
+                    if re.search(r'odeon.kids|kids.showing', line, re.I):
+                        time_str = 'Morning'
+                        title = current_title or 'Odeon Kids Film'
+                        # find time nearby
+                        for j in range(i, min(len(lines), i+5)):
+                            t = re.search(r'\b(\d{1,2}[:.]\d{2})\b', lines[j])
+                            if t:
+                                time_str = t.group(1).replace('.', ':')
                                 break
+                        if is_morning(time_str) or time_str == 'Morning':
+                            results[day_key].append({
+                                'title': title,
+                                'time': time_str,
+                                'price': 'Odeon Kids'
+                            })
 
-                    results[day_key].append({'title': title, 'time': time_str, 'price': 'Odeon Kids'})
-                i += 1
+                    # Track potential film title (capitalised line, not a time/label)
+                    elif (len(line) > 3
+                          and line[0].isupper()
+                          and not re.search(r'(\d{1,2}[:.]\d{2}|book|cert|screen|odeon|buy|select)', line, re.I)
+                          and len(line) < 80):
+                        current_title = line
+
+                    i += 1
 
             # Deduplicate
             seen = set()
@@ -302,7 +381,8 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            viewport={'width': 1280, 'height': 800}
         )
         page = await context.new_page()
 
@@ -312,14 +392,14 @@ async def main():
                 'saturday': saturday.strftime('%a %d %b'),
                 'sunday': sunday.strftime('%a %d %b')
             },
-            'cinemas': {
-                'arc_beeston': await scrape_arc_beeston(page, saturday, sunday),
-                'showcase_nottingham': await scrape_showcase(page, 'showcase-cinema-de-lux-nottingham', 'Showcase Nottingham', saturday, sunday),
-                'showcase_derby': await scrape_showcase(page, 'showcase-derby', 'Showcase Derby', saturday, sunday),
-                'savoy_nottingham': await scrape_savoy(page, saturday, sunday),
-                'odeon_derby': await scrape_odeon(page, saturday, sunday),
-            }
+            'cinemas': {}
         }
+
+        output['cinemas']['arc_beeston'] = await scrape_arc_beeston(page, saturday, sunday)
+        output['cinemas']['showcase_nottingham'] = await scrape_showcase(page, 'showcase-cinema-de-lux-nottingham', 'Showcase Nottingham', saturday, sunday)
+        output['cinemas']['showcase_derby'] = await scrape_showcase(page, 'showcase-derby', 'Showcase Derby', saturday, sunday)
+        output['cinemas']['savoy_nottingham'] = await scrape_savoy(page, saturday, sunday)
+        output['cinemas']['odeon_derby'] = await scrape_odeon(page, saturday, sunday)
 
         await browser.close()
 
@@ -328,6 +408,7 @@ async def main():
         json.dump(output, f, indent=2)
 
     print(f"\nDone! Written to data/showings.json")
+    print(json.dumps(output, indent=2))
 
 
 if __name__ == '__main__':
