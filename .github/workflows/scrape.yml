@@ -1,4 +1,4 @@
-Name: Scrape Kids Cinema Showings
+name: Scrape Kids Cinema Showings
 
 on:
   schedule:
