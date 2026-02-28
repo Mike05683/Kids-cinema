@@ -1,89 +1,81 @@
 {
-  "updated": "Sat 28 Feb 2026 at 22:51",
+  "updated": "Sat 28 Feb 2026 at 23:06",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "\u00a33.50"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "\u00a33.50"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     },
     "showcase_nottingham": {
-      "saturday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "\u00a32.49"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "\u00a32.49"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     },
     "showcase_derby": {
-      "saturday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "\u00a32.49"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "\u00a32.49"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     },
     "savoy_nottingham": {
       "saturday": [
         {
-          "title": "Check website for this week's film",
-          "time": "Morning",
+          "title": "Standard",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "12:15",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "12:10",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "12:30",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "11:15",
           "price": "\u00a32.15"
         }
       ],
       "sunday": [
         {
-          "title": "Check website for this week's film",
-          "time": "Morning",
+          "title": "Standard",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "12:15",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "12:10",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "12:30",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Standard",
+          "time": "11:15",
           "price": "\u00a32.15"
         }
       ]
     },
     "odeon_derby": {
-      "saturday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "Odeon Kids"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Check website for this week's film",
-          "time": "Morning",
-          "price": "Odeon Kids"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     }
   }
 }
