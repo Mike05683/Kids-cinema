@@ -1,81 +1,339 @@
 {
-  "updated": "Sat 28 Feb 2026 at 23:06",
+  "updated": "Sat 28 Feb 2026 at 23:12",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "03:20",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "GOAT",
+          "time": "01:10",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "GOAT",
+          "time": "01:25",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Scream 7",
+          "time": "03:35",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Hoppers",
+          "time": "01:20",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Elvis",
+          "time": "03:00",
+          "price": "\u00a33.50"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "03:20",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "GOAT",
+          "time": "01:10",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "GOAT",
+          "time": "01:25",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Scream 7",
+          "time": "03:35",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Hoppers",
+          "time": "01:20",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Elvis",
+          "time": "03:00",
+          "price": "\u00a33.50"
+        }
+      ]
     },
     "showcase_nottingham": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "05:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The Housemaid",
+          "time": "08:55",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "05:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "05:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Elvis",
+          "time": "06:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Twenty One Pilots: More Than We Ever Imagined",
+          "time": "06:00",
+          "price": "\u00a32.49"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "05:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The Housemaid",
+          "time": "08:55",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "05:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "05:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Elvis",
+          "time": "06:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Twenty One Pilots: More Than We Ever Imagined",
+          "time": "06:00",
+          "price": "\u00a32.49"
+        }
+      ]
     },
     "showcase_derby": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "06:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The Housemaid",
+          "time": "06:55",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Crime 101",
+          "time": "07:25",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "05:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "06:20",
+          "price": "\u00a32.49"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "06:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The Housemaid",
+          "time": "06:55",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Crime 101",
+          "time": "07:25",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "05:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "06:20",
+          "price": "\u00a32.49"
+        }
+      ]
     },
     "savoy_nottingham": {
       "saturday": [
         {
-          "title": "Standard",
+          "title": "Wuthering Heights",
+          "time": "05:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "GOAT",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Standard",
-          "time": "12:15",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Standard",
+          "title": "Zootropolis 2",
           "time": "12:10",
           "price": "\u00a32.15"
         },
         {
-          "title": "Standard",
-          "time": "12:30",
+          "title": "Scream 7",
+          "time": "02:30",
           "price": "\u00a32.15"
         },
         {
-          "title": "Standard",
-          "time": "11:15",
+          "title": "Hoppers",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Elvis",
+          "time": "02:45",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Stitch Head",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Animation Program",
+          "time": "10:00",
           "price": "\u00a32.15"
         }
       ],
       "sunday": [
         {
-          "title": "Standard",
+          "title": "Wuthering Heights",
+          "time": "05:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "GOAT",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Standard",
-          "time": "12:15",
-          "price": "\u00a32.15"
-        },
-        {
-          "title": "Standard",
+          "title": "Zootropolis 2",
           "time": "12:10",
           "price": "\u00a32.15"
         },
         {
-          "title": "Standard",
-          "time": "12:30",
+          "title": "Scream 7",
+          "time": "02:30",
           "price": "\u00a32.15"
         },
         {
-          "title": "Standard",
-          "time": "11:15",
+          "title": "Hoppers",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Elvis",
+          "time": "02:45",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Stitch Head",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Animation Program",
+          "time": "10:00",
           "price": "\u00a32.15"
         }
       ]
     },
     "odeon_derby": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "02:40",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "GOAT",
+          "time": "02:40",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Scream 7",
+          "time": "02:50",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "03:20",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Elvis",
+          "time": "05:00",
+          "price": "Odeon Kids"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Wuthering Heights",
+          "time": "02:40",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "GOAT",
+          "time": "02:40",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Scream 7",
+          "time": "02:50",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "03:20",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Elvis",
+          "time": "05:00",
+          "price": "Odeon Kids"
+        }
+      ]
     }
   }
 }
