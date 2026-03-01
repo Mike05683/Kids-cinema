@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timedelta
 import requests
 
-SERPAPI_KEY = os.environ.get('SERPAPI_KEY', '')
+SERP_API_KEY = os.environ.get('SERP_API_KEY', '')
 
 
 def get_weekend_dates():
@@ -28,7 +28,7 @@ def google_search(query):
     """Search Google via SerpApi and return results."""
     params = {
         'q': query,
-        'api_key': SERPAPI_KEY,
+        'api_key': SERP_API_KEY,
         'engine': 'google',
         'gl': 'uk',
         'hl': 'en',
