@@ -88,9 +88,13 @@ def scrape_arc(saturday, sunday):
         sun_d  = sunday.strftime('%d %b')     # "08 Mar"
         sun_d2 = sunday.strftime('%-d %b')    # "8 Mar"
 
+        SKIP_TITLES = {'details', 'book now', 'more info', 'info', 'back', 'next', 'prev'}
+
         for link in soup.find_all('a', href=re.compile(r'^/event/')):
             title = link.get_text(strip=True)
             if not title or len(title) < 2:
+                continue
+            if title.lower() in SKIP_TITLES:
                 continue
 
             # Walk up to find container with both a month name and a time
