@@ -1,55 +1,97 @@
 {
-  "updated": "Sat 28 Feb 2026 at 23:28",
+  "updated": "Sun 01 Mar 2026 at 07:40",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
+      "saturday": [],
+      "sunday": []
+    },
+    "showcase_nottingham": {
       "saturday": [
         {
-          "title": "Elvis",
-          "time": "See website",
-          "price": "\u00a33.50"
+          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
+          "time": "10:00",
+          "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Elvis",
-          "time": "See website",
-          "price": "\u00a33.50"
+          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
+          "time": "10:00",
+          "price": "\u00a32.49"
         }
       ]
     },
-    "showcase_nottingham": {
-      "saturday": [],
-      "sunday": []
-    },
     "showcase_derby": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        }
+      ]
     },
     "savoy_nottingham": {
       "saturday": [
         {
-          "title": "Elvis",
+          "title": "Mark as watched",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Elvis",
+          "title": "Mark as watched",
+          "time": "12:15",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Mark as watched",
+          "time": "12:10",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Mark as watched",
+          "time": "12:30",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Mark as watched",
           "time": "11:15",
           "price": "\u00a32.15"
         }
       ],
       "sunday": [
         {
-          "title": "Elvis",
+          "title": "Mark as watched",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Elvis",
+          "title": "Mark as watched",
+          "time": "12:15",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Mark as watched",
+          "time": "12:10",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Mark as watched",
+          "time": "12:30",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Mark as watched",
           "time": "11:15",
           "price": "\u00a32.15"
         }
@@ -58,25 +100,15 @@
     "odeon_derby": {
       "saturday": [
         {
-          "title": "Elvis",
-          "time": "See website",
-          "price": "Odeon Kids"
-        },
-        {
-          "title": "Sinners",
-          "time": "See website",
+          "title": "Odeon Kids \u2014 tap Book tickets for this week's film",
+          "time": "Morning",
           "price": "Odeon Kids"
         }
       ],
       "sunday": [
         {
-          "title": "Elvis",
-          "time": "See website",
-          "price": "Odeon Kids"
-        },
-        {
-          "title": "Sinners",
-          "time": "See website",
+          "title": "Odeon Kids \u2014 tap Book tickets for this week's film",
+          "time": "Morning",
           "price": "Odeon Kids"
         }
       ]
