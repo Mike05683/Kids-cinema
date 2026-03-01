@@ -1,26 +1,248 @@
 {
-  "updated": "Sun 01 Mar 2026 at 07:40",
+  "updated": "Sun 01 Mar 2026 at 07:45",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "GOAT",
+          "time": "11:10",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "The SpongeBob Movie: Search for SquarePants",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Elvis",
+          "time": "10:55",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Looney Tunes: The Day the Earth Blew Up",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Stitch Head",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Miss Moxy",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "TV Movie",
+          "time": "11:15",
+          "price": "\u00a33.50"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "GOAT",
+          "time": "11:10",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "The SpongeBob Movie: Search for SquarePants",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Elvis",
+          "time": "10:55",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Looney Tunes: The Day the Earth Blew Up",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Stitch Head",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Miss Moxy",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "TV Movie",
+          "time": "11:15",
+          "price": "\u00a33.50"
+        }
+      ]
     },
     "showcase_nottingham": {
       "saturday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
+          "title": "GOAT",
+          "time": "10:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "11:45",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The Secret Agent",
+          "time": "10:50",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "11:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "12:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Avatar: Fire and Ash",
+          "time": "11:45",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
           "time": "10:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "12:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Sing 2",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Minions: The Rise of Gru",
+          "time": "10:20",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Video",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:15",
           "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
+          "title": "GOAT",
+          "time": "10:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "11:45",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The Secret Agent",
+          "time": "10:50",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "11:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "12:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Avatar: Fire and Ash",
+          "time": "11:45",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
           "time": "10:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "12:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Sing 2",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Minions: The Rise of Gru",
+          "time": "10:20",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Video",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:15",
           "price": "\u00a32.49"
         }
       ]
@@ -28,15 +250,165 @@
     "showcase_derby": {
       "saturday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
-          "time": "10:00",
+          "title": "Wuthering Heights",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "10:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "11:35",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Zootropolis 2",
+          "time": "10:25",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "11:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "11:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "12:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "10:35",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The SpongeBob Movie: Search for SquarePants",
+          "time": "10:05",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Sing 2",
+          "time": "10:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Minions: The Rise of Gru",
+          "time": "10:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Video",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:15",
           "price": "\u00a32.49"
         }
       ],
       "sunday": [
         {
-          "title": "Family Favourites \u2014 tap Book tickets for this week's film",
-          "time": "10:00",
+          "title": "Wuthering Heights",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "10:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "11:35",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "GOAT",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Zootropolis 2",
+          "time": "10:25",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "11:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "11:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Scream 7",
+          "time": "12:00",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "10:35",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "The SpongeBob Movie: Search for SquarePants",
+          "time": "10:05",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Sing 2",
+          "time": "10:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Minions: The Rise of Gru",
+          "time": "10:15",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "Video",
+          "time": "12:30",
+          "price": "\u00a32.49"
+        },
+        {
+          "title": "TV Movie",
+          "time": "10:15",
           "price": "\u00a32.49"
         }
       ]
@@ -44,54 +416,74 @@
     "savoy_nottingham": {
       "saturday": [
         {
-          "title": "Mark as watched",
+          "title": "GOAT",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "GOAT",
           "time": "12:15",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "Zootropolis 2",
           "time": "12:10",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "Hoppers",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Hoppers",
           "time": "12:30",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "Animation Program",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Animation Program",
           "time": "11:15",
           "price": "\u00a32.15"
         }
       ],
       "sunday": [
         {
-          "title": "Mark as watched",
+          "title": "GOAT",
           "time": "10:00",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "GOAT",
           "time": "12:15",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "Zootropolis 2",
           "time": "12:10",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "Hoppers",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Hoppers",
           "time": "12:30",
           "price": "\u00a32.15"
         },
         {
-          "title": "Mark as watched",
+          "title": "Animation Program",
+          "time": "10:00",
+          "price": "\u00a32.15"
+        },
+        {
+          "title": "Animation Program",
           "time": "11:15",
           "price": "\u00a32.15"
         }
@@ -100,15 +492,115 @@
     "odeon_derby": {
       "saturday": [
         {
-          "title": "Odeon Kids \u2014 tap Book tickets for this week's film",
-          "time": "Morning",
+          "title": "Wuthering Heights",
+          "time": "11:30",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "GOAT",
+          "time": "11:10",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "GOAT",
+          "time": "12:10",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Zootropolis 2",
+          "time": "10:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Scream 7",
+          "time": "12:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "10:20",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:40",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "The SpongeBob Movie: Search for SquarePants",
+          "time": "10:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Elvis",
+          "time": "12:20",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Night of the Zoopocalypse",
+          "time": "10:00",
           "price": "Odeon Kids"
         }
       ],
       "sunday": [
         {
-          "title": "Odeon Kids \u2014 tap Book tickets for this week's film",
-          "time": "Morning",
+          "title": "Wuthering Heights",
+          "time": "11:30",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "GOAT",
+          "time": "11:10",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "GOAT",
+          "time": "12:10",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Zootropolis 2",
+          "time": "10:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Scream 7",
+          "time": "12:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "10:20",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Hoppers",
+          "time": "11:40",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "The SpongeBob Movie: Search for SquarePants",
+          "time": "10:00",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Elvis",
+          "time": "12:20",
+          "price": "Odeon Kids"
+        },
+        {
+          "title": "Night of the Zoopocalypse",
+          "time": "10:00",
           "price": "Odeon Kids"
         }
       ]
