@@ -19,9 +19,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 
+        run: pip install requests beautifulsoup4
 
       - name: Run scraper
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python scraper.py
 
       - name: Commit and push updated data
