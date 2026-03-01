@@ -1,5 +1,5 @@
 {
-  "updated": "Sun 01 Mar 2026 at 10:18",
+  "updated": "Sun 01 Mar 2026 at 10:42",
   "weekend_dates": {
     "saturday": "Sat 28 Feb",
     "sunday": "Sun 01 Mar"
@@ -10,11 +10,6 @@
       "sunday": [
         {
           "title": "MISS MOXY",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        },
-        {
-          "title": "Details",
           "time": "11:00",
           "price": "\u00a33.50"
         }
