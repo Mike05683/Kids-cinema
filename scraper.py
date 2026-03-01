@@ -239,8 +239,8 @@ def search_cinema(cinema_name, location, price, saturday, sunday):
 
 
 def main():
-    if not SERPAPI_KEY:
-        print("ERROR: SERPAPI_KEY environment variable not set!")
+    if not SERP_API_KEY:
+        print("ERROR: SERP_API_KEY environment variable not set!")
         exit(1)
 
     saturday, sunday = get_weekend_dates()
