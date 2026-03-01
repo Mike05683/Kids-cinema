@@ -25,6 +25,7 @@ jobs:
       - name: Run scraper
         env:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          FORCE_SCRAPE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: python scraper.py
 
       - name: Commit and push updated data
