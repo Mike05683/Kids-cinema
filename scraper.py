@@ -58,7 +58,11 @@ def too_early_to_scrape():
     Listings go live Wednesday evening, so scraping before then is pointless.
     When True we leave the existing JSON untouched so the site keeps
     showing last weekend's data.
+    Set FORCE_SCRAPE=1 environment variable to bypass (used for manual runs).
     """
+    if os.environ.get('FORCE_SCRAPE') == '1':
+        print("FORCE_SCRAPE set - skipping early check.")
+        return False
     now = datetime.now()
     weekday = now.weekday()
     is_sunday_afternoon = (weekday == 6 and now.hour > 12)
