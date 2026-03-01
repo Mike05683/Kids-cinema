@@ -2,13 +2,16 @@
 """
 Kids Cinema Weekend Scraper - Final Version
 
-Runs: Wednesday 00:01am and Thursday 00:01am via GitHub Actions.
+Schedule: Wednesday 00:01am and Thursday 00:01am via GitHub Actions.
 
-If run on a Sunday after 12pm, exits early with a message in the JSON
-telling users to check back Wednesday when next weekend's listings go live.
+Weekend date logic:
+- Sat/Sun morning     -> show THIS weekend
+- Sun after 12pm      -> too early, leave existing JSON untouched
+- Mon/Tue             -> too early, leave existing JSON untouched
+- Wed/Thu/Fri         -> show NEXT weekend (listings now live)
 
-Arc Beeston and Savoy Nottingham are scraped directly.
-Showcase and Odeon block scraping - shown as placeholders with correct price/time.
+Arc Beeston and Savoy Nottingham scraped directly from their sites.
+Showcase and Odeon block scraping - shown as placeholders.
 """
 
 import json, re, os, time
@@ -23,56 +26,53 @@ HEADERS = {
 
 
 def get_weekend_dates():
+    """
+    Returns the Saturday and Sunday to display based on day of week.
+    Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+    """
     today = datetime.today()
-    days_until_saturday = (5 - today.weekday()) % 7
-    if days_until_saturday == 0:
-        days_until_saturday = 7
-    saturday = today + timedelta(days=days_until_saturday)
+    weekday = today.weekday()
+
+    if weekday == 5:
+        # Saturday - show this weekend
+        saturday = today
+    elif weekday == 6:
+        # Sunday - show this weekend (yesterday was Saturday)
+        saturday = today - timedelta(days=1)
+    elif weekday in (0, 1):
+        # Monday or Tuesday - show LAST weekend (next weekend not listed yet)
+        days_since_saturday = weekday + 2
+        saturday = today - timedelta(days=days_since_saturday)
+    else:
+        # Wednesday, Thursday, Friday - show NEXT weekend
+        days_until_saturday = 5 - weekday
+        saturday = today + timedelta(days=days_until_saturday)
+
     sunday = saturday + timedelta(days=1)
     return saturday, sunday
 
 
 def too_early_to_scrape():
     """
-    Returns True if it's Sunday after 12pm - next weekend's listings
-    won't be published until Wednesday evening so scraping is pointless.
+    True if listings for next weekend aren't published yet.
+    Listings go live Wednesday evening, so scraping before then is pointless.
+    When True we leave the existing JSON untouched so the site keeps
+    showing last weekend's data.
     """
     now = datetime.now()
-    is_sunday = now.weekday() == 6
-    is_afternoon = now.hour >= 12
-    return is_sunday and is_afternoon
-
-
-def write_wait_message(saturday, sunday):
-    """Write a friendly 'check back Wednesday' message to the JSON."""
-    placeholder = [{'title': 'Listings not published yet - check back after Wednesday', 'time': '—', 'price': '—'}]
-    output = {
-        'updated': datetime.now().strftime('%a %d %b %Y at %H:%M'),
-        'weekend_dates': {
-            'saturday': saturday.strftime('%a %d %b'),
-            'sunday':   sunday.strftime('%a %d %b'),
-        },
-        'cinemas': {
-            'arc_beeston':         {'saturday': placeholder, 'sunday': placeholder},
-            'showcase_nottingham': {'saturday': placeholder, 'sunday': placeholder},
-            'showcase_derby':      {'saturday': placeholder, 'sunday': placeholder},
-            'savoy_nottingham':    {'saturday': placeholder, 'sunday': placeholder},
-            'odeon_derby':         {'saturday': placeholder, 'sunday': placeholder},
-        }
-    }
-    os.makedirs('data', exist_ok=True)
-    with open('data/showings.json', 'w') as f:
-        json.dump(output, f, indent=2)
-    print('Too early - listings not published yet. Written wait message to JSON.')
+    weekday = now.weekday()
+    is_sunday_afternoon = (weekday == 6 and now.hour >= 12)
+    is_monday_or_tuesday = weekday in (0, 1)
+    return is_sunday_afternoon or is_monday_or_tuesday
 
 
 def scrape_arc(saturday, sunday):
     """
     Arc Beeston kids club page.
-    Confirmed structure:
+    Confirmed structure from fetching real page:
       ## [FILM TITLE](/event/XXXXX)
       Running time: 108 mins
-      Sat 07 Mar  (or Sun 08 Mar)
+      Sat 07 Mar
       **11:00** - 12:48
     """
     results = {'saturday': [], 'sunday': []}
@@ -93,7 +93,7 @@ def scrape_arc(saturday, sunday):
             if not title or len(title) < 2:
                 continue
 
-            # Walk up to find a container that has both a date and a time
+            # Walk up to find container with both a month name and a time
             container = link
             for _ in range(8):
                 container = container.parent
@@ -138,7 +138,7 @@ def scrape_arc(saturday, sunday):
 def scrape_savoy(saturday, sunday):
     """
     Savoy Nottingham kids club page.
-    Confirmed structure:
+    Confirmed structure from fetching real page:
       <h3>Film Title</h3>
       <li>Sun 1 Mar
         10:00 KC TC
@@ -207,43 +207,42 @@ def scrape_savoy(saturday, sunday):
 
 
 def main():
+    now = datetime.now()
+    print(f"Run time: {now.strftime('%A %d %b at %H:%M')}")
+
+    if too_early_to_scrape():
+        print("Too early to scrape - next weekend listings not published yet.")
+        print("Leaving existing JSON untouched so site shows last weekend's data.")
+        return
+
     saturday, sunday = get_weekend_dates()
     print(f"Weekend: {saturday.strftime('%A %d %b')} & {sunday.strftime('%A %d %b')}")
-    print(f"Run time: {datetime.now().strftime('%A %d %b at %H:%M')}")
-
-    # If it's Sunday afternoon, listings for next weekend aren't out yet
-    if too_early_to_scrape():
-        write_wait_message(saturday, sunday)
-        return
 
     arc   = scrape_arc(saturday, sunday)
     time.sleep(2)
     savoy = scrape_savoy(saturday, sunday)
 
-    showcase_placeholder = {
-        'saturday': [{'title': 'Family Favourites', 'time': '10:00', 'price': '£2.49'}],
-        'sunday':   [{'title': 'Family Favourites', 'time': '10:00', 'price': '£2.49'}],
-    }
-    odeon_placeholder = {
-        'saturday': [{'title': 'Odeon Kids', 'time': 'Morning', 'price': 'Odeon Kids pricing'}],
-        'sunday':   [{'title': 'Odeon Kids', 'time': 'Morning', 'price': 'Odeon Kids pricing'}],
-    }
-
     output = {
-        'updated': datetime.now().strftime('%a %d %b %Y at %H:%M'),
+        'updated': now.strftime('%a %d %b %Y at %H:%M'),
         'weekend_dates': {
             'saturday': saturday.strftime('%a %d %b'),
             'sunday':   sunday.strftime('%a %d %b'),
         },
         'cinemas': {
-            'arc_beeston':         arc,
-            'showcase_nottingham': showcase_placeholder,
-            'showcase_derby':      {
+            'arc_beeston': arc,
+            'showcase_nottingham': {
                 'saturday': [{'title': 'Family Favourites', 'time': '10:00', 'price': '£2.49'}],
                 'sunday':   [{'title': 'Family Favourites', 'time': '10:00', 'price': '£2.49'}],
             },
-            'savoy_nottingham':    savoy,
-            'odeon_derby':         odeon_placeholder,
+            'showcase_derby': {
+                'saturday': [{'title': 'Family Favourites', 'time': '10:00', 'price': '£2.49'}],
+                'sunday':   [{'title': 'Family Favourites', 'time': '10:00', 'price': '£2.49'}],
+            },
+            'savoy_nottingham': savoy,
+            'odeon_derby': {
+                'saturday': [{'title': 'Odeon Kids', 'time': 'Morning', 'price': 'Odeon Kids pricing'}],
+                'sunday':   [{'title': 'Odeon Kids', 'time': 'Morning', 'price': 'Odeon Kids pricing'}],
+            },
         }
     }
 
