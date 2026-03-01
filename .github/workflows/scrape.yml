@@ -27,11 +27,13 @@ jobs:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python scraper.py
 
-      - name: Commit and push updated data
+     - name: Commit and push updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase
           git add data/showings.json
+          git stash
+          git pull --rebase
+          git stash pop
           git diff --staged --quiet || git commit -m "chore: update cinema showings $(date +'%Y-%m-%d')"
           git push
