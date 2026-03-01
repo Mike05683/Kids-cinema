@@ -2,7 +2,8 @@ name: Scrape Kids Cinema Showings
 
 on:
   schedule:
-    - cron: '0 8 * * 2'
+    - cron: '1 0 * * 3'
+    - cron: '1 0 * * 4'
   workflow_dispatch:
 
 jobs:
@@ -23,7 +24,7 @@ jobs:
 
       - name: Run scraper
         env:
-          SERP_API_KEY: ${{ secrets.SERP_API_KEY }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
         run: python scraper.py
 
       - name: Commit and push updated data
