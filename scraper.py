@@ -61,7 +61,7 @@ def too_early_to_scrape():
     """
     now = datetime.now()
     weekday = now.weekday()
-    is_sunday_afternoon = (weekday == 6 and now.hour >= 12)
+    is_sunday_afternoon = (weekday == 6 and now.hour > 12)
     is_monday_or_tuesday = weekday in (0, 1)
     return is_sunday_afternoon or is_monday_or_tuesday
 
