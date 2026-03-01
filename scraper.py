@@ -1,17 +1,7 @@
 #!/usr/bin/env python3
 """
-Kids Cinema Weekend Scraper v9
-
-Key insight from inspecting real IMDB page content:
-- Times appear as "11:10 AM", "12:10 PM" (12-hour AM/PM format)
-- "Mark as watched" appears repeatedly - NOT a film title
-- "Rate" appears as button text - NOT a film title  
-- "Standard:" appears before each time block - NOT a film title
-- Film titles come BEFORE the rating/runtime info
-- IMDB URL format: /showtimes/cinema/UK/{id}/UK/{postcode_prefix}/
-
-Arc Beeston: confirmed 11:10 AM morning show visible in search results
-Savoy: confirmed working previously with 10:00, 11:15, 12:10 etc
+Kids Cinema Weekend Scraper - SerpApi version
+Uses Google search via SerpApi to find kids club showings for each cinema.
 """
 
 import json
@@ -20,72 +10,8 @@ import os
 import time
 from datetime import datetime, timedelta
 import requests
-from bs4 import BeautifulSoup
 
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept-Language': 'en-GB,en;q=0.9',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-}
-
-# Confirmed IMDB IDs and correct postcode prefix format
-CINEMAS = {
-    'arc_beeston': {
-        'name': 'Arc Cinema Beeston',
-        'imdb_id': 'ci1025115',
-        'postcode': 'NG9',
-        'price': '£3.50',
-        'url': 'https://beeston.arccinema.co.uk/whatson/kidsclub',
-    },
-    'showcase_nottingham': {
-        'name': 'Showcase Nottingham',
-        'imdb_id': 'ci0960030',
-        'postcode': 'NG7',
-        'price': '£2.49',
-        'url': 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-cinema-de-lux-nottingham',
-    },
-    'showcase_derby': {
-        'name': 'Showcase Derby',
-        'imdb_id': 'ci0960015',
-        'postcode': 'DE1',
-        'price': '£2.49',
-        'url': 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-derby',
-    },
-    'savoy_nottingham': {
-        'name': 'Savoy Cinema Nottingham',
-        'imdb_id': 'ci0959999',
-        'postcode': 'NG1',
-        'price': '£2.15',
-        'url': 'https://savoyonline.co.uk',
-    },
-    'odeon_derby': {
-        'name': 'Odeon Derby',
-        'imdb_id': 'ci0959806',
-        'postcode': 'DE1',
-        'price': 'Odeon Kids',
-        'url': 'https://www.odeon.co.uk/cinemas/derby/161/',
-    },
-}
-
-# Lines that are definitely NOT film titles
-NOT_TITLE = re.compile(
-    r'^(standard|imax|4dx|dolby|3d|2d|superscreen|vip|d-box|'
-    r'subtitled|audio.described|relaxed|sensory|'
-    r'mark as watched|rate|ratemark|add to watchlist|'
-    r'book|buy|select|tickets|see all times|load more|'
-    r'showtimes|listings|all times|choose date|'
-    r'today|tomorrow|'
-    r'monday|tuesday|wednesday|thursday|friday|saturday|sunday|'
-    r'january|february|march|april|may|june|july|august|'
-    r'september|october|november|december|'
-    r'cert|certificate|pg\b|12a?|15\b|18\b|u\b|uu\b|r\b|'
-    r'sign in|log in|register|menu|search|filter|sort|'
-    r'imdb|amazon|privacy|terms|help|about|contact|jobs|press|'
-    r'morning|afternoon|evening|night|'
-    r'running time|mins|minutes|watch trailer|details|'
-    r'\d+h\s*\d+m|\d+\s*mins?)$',
-    re.I
-)
+SERPAPI_KEY = os.environ.get('SERPAPI_KEY', '')
 
 
 def get_weekend_dates():
@@ -98,116 +24,243 @@ def get_weekend_dates():
     return saturday, sunday
 
 
-def parse_ampm_time(time_str):
-    """
-    Parse a 12-hour AM/PM time string and return (hour_24, minute, formatted_str).
-    e.g. "11:10 AM" -> (11, 10, "11:10")
-         "12:10 PM" -> (12, 10, "12:10")
-         "1:30 PM"  -> (13, 30, "13:30")
-    Returns None if can't parse.
-    """
-    time_str = time_str.strip().upper()
-    m = re.match(r'(\d{1,2}):(\d{2})\s*(AM|PM)', time_str)
-    if not m:
-        return None
-    h, mn, period = int(m.group(1)), int(m.group(2)), m.group(3)
-    if period == 'AM':
-        h = h % 12  # 12 AM -> 0, rest stay same
-    else:
-        if h != 12:
-            h += 12  # 1 PM -> 13, 12 PM -> 12
-    return (h, mn, f'{h:02d}:{mn:02d}')
-
-
-def is_morning_show(h, mn):
-    """True if time is between 09:00 and 12:30 - the kids club window."""
-    return (h >= 9 and h < 12) or (h == 12 and mn <= 30)
-
-
-def scrape_imdb(cinema_id, postcode, date_str, cinema_name, price):
-    """Scrape IMDB showtimes page for morning shows on a given date."""
-    url = f'https://www.imdb.com/showtimes/cinema/UK/{cinema_id}/UK/{postcode}/?date={date_str}'
-    print(f"  GET {url}")
-
+def google_search(query):
+    """Search Google via SerpApi and return results."""
+    params = {
+        'q': query,
+        'api_key': SERPAPI_KEY,
+        'engine': 'google',
+        'gl': 'uk',
+        'hl': 'en',
+        'num': 10,
+    }
     try:
-        r = requests.get(url, headers=HEADERS, timeout=20)
-        print(f"  Status: {r.status_code}, Size: {len(r.text)}")
-        if r.status_code != 200:
-            return []
+        r = requests.get('https://serpapi.com/search', params=params, timeout=20)
+        data = r.json()
+        return data
+    except Exception as e:
+        print(f"  SerpApi error: {e}")
+        return {}
 
-        soup = BeautifulSoup(r.text, 'html.parser')
 
-        # Save raw text for debugging
-        raw_text = soup.get_text(separator='\n')
-        debug_file = f"data/debug_{cinema_id}_{date_str}.txt"
-        os.makedirs('data', exist_ok=True)
-        with open(debug_file, 'w', encoding='utf-8') as f:
-            f.write(raw_text)
+def extract_showings_from_results(data, saturday, sunday, price, cinema_name):
+    """
+    Extract film titles and times from Google search results.
+    Looks in: knowledge graph, showtimes panel, organic results snippets.
+    """
+    results = {'saturday': [], 'sunday': []}
 
-        lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
+    sat_str = saturday.strftime('%d %B')       # "07 March"
+    sun_str = sunday.strftime('%d %B')         # "08 March"
+    sat_short = saturday.strftime('%-d %b')    # "7 Mar"
+    sun_short = sunday.strftime('%-d %b')      # "8 Mar"
+    sat_day = saturday.strftime('%A')          # "Saturday"
+    sun_day = sunday.strftime('%A')            # "Sunday"
 
-        results = []
+    def matches_saturday(text):
+        return any(x in text for x in [sat_str, sat_short, sat_day, 'Sat '])
+
+    def matches_sunday(text):
+        return any(x in text for x in [sun_str, sun_short, sun_day, 'Sun '])
+
+    def extract_times_and_films(text):
+        """Pull film title + time pairs from a block of text."""
+        found = []
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
         current_title = None
 
+        SKIP = re.compile(
+            r'^(book|buy|select|standard|imax|cert|pg\b|12a|15\b|18\b|u\b|'
+            r'mark as watched|rate|add to|see all|load more|tickets|'
+            r'monday|tuesday|wednesday|thursday|friday|saturday|sunday|'
+            r'today|tomorrow|morning|afternoon|evening|'
+            r'kids club|family favourites|odeon kids|'
+            r'running time|\d+\s*mins?|\d+h\s*\d+m)$',
+            re.I
+        )
+
         for line in lines:
-            # Skip known non-title lines
-            if NOT_TITLE.match(line):
+            if SKIP.match(line):
                 continue
 
-            # Skip pure numbers/times/punctuation
-            if re.match(r'^[\d\s:.,\-/()]+$', line):
-                continue
+            # Check for time patterns (both 12h and 24h)
+            times_12h = re.findall(r'\b(\d{1,2}:\d{2}\s*(?:AM|PM))\b', line, re.I)
+            times_24h = re.findall(r'\b(\d{1,2}:\d{2})\b', line)
 
-            # Check if line contains AM/PM times
-            time_matches = re.findall(r'\d{1,2}:\d{2}\s*(?:AM|PM)', line, re.I)
+            all_times = []
+            for t in times_12h:
+                parsed = parse_time(t)
+                if parsed and is_morning(*parsed[:2]):
+                    all_times.append(parsed[2])
+            if not times_12h:
+                for t in times_24h:
+                    h, m = int(t.split(':')[0]), int(t.split(':')[1])
+                    if is_morning(h, m):
+                        all_times.append(f'{h:02d}:{m:02d}')
 
-            if time_matches:
-                # This line has times - pair with current title
-                if current_title:
-                    for t in time_matches:
-                        parsed = parse_ampm_time(t)
-                        if parsed:
-                            h, mn, fmt = parsed
-                            if is_morning_show(h, mn):
-                                results.append({
-                                    'title': current_title,
-                                    'time': fmt,
-                                    'price': price
-                                })
-            else:
-                # Potential film title line
-                if (len(line) > 2 and len(line) < 100
-                        and line[0].isupper()
-                        and not re.match(r'^\d', line)):
-                    current_title = line
+            if all_times and current_title:
+                for t in all_times:
+                    found.append({'title': current_title, 'time': t})
+            elif (len(line) > 3 and len(line) < 100
+                  and line[0].isupper()
+                  and not re.match(r'^\d', line)):
+                current_title = line
 
-        # Deduplicate
+        return found
+
+    # Check showtimes panel (Google's built-in cinema widget)
+    showtimes = data.get('showtimes', [])
+    for day_block in showtimes:
+        day_name = day_block.get('day', '')
+        is_sat = sat_day in day_name or sat_short in day_name
+        is_sun = sun_day in day_name or sun_short in day_name
+        if not is_sat and not is_sun:
+            continue
+
+        day_key = 'saturday' if is_sat else 'sunday'
+        movies = day_block.get('movies', [])
+        for movie in movies:
+            title = movie.get('name', '')
+            for showing in movie.get('showing', []):
+                for t in showing.get('time', []):
+                    parsed = parse_time(t)
+                    if parsed and is_morning(*parsed[:2]):
+                        results[day_key].append({
+                            'title': title,
+                            'time': parsed[2],
+                            'price': price
+                        })
+
+    # Check knowledge graph
+    kg = data.get('knowledge_graph', {})
+    kg_text = json.dumps(kg)
+    if cinema_name.lower() in kg_text.lower():
+        found = extract_times_and_films(kg_text)
+        for item in found:
+            text_context = kg_text
+            if matches_saturday(text_context):
+                results['saturday'].append({**item, 'price': price})
+            elif matches_sunday(text_context):
+                results['sunday'].append({**item, 'price': price})
+
+    # Check organic results snippets
+    organic = data.get('organic_results', [])
+    for result in organic:
+        snippet = result.get('snippet', '')
+        title_text = result.get('title', '')
+        combined = snippet + ' ' + title_text
+
+        found = extract_times_and_films(snippet)
+        for item in found:
+            if matches_saturday(combined):
+                results['saturday'].append({**item, 'price': price})
+            elif matches_sunday(combined):
+                results['sunday'].append({**item, 'price': price})
+
+    # Deduplicate each day
+    for day in ['saturday', 'sunday']:
         seen = set()
         deduped = []
-        for item in results:
+        for item in results[day]:
             k = item['title'] + item['time']
             if k not in seen:
                 seen.add(k)
                 deduped.append(item)
+        results[day] = deduped
 
-        print(f"  -> {len(deduped)} morning shows found")
-        if deduped:
-            for d in deduped:
-                print(f"     {d['title']} @ {d['time']}")
-        return deduped
+    return results
 
-    except Exception as e:
-        print(f"  Error: {e}")
-        import traceback; traceback.print_exc()
-        return []
+
+def parse_time(time_str):
+    """Parse 12h or 24h time. Returns (hour, minute, formatted) or None."""
+    time_str = str(time_str).strip().upper()
+    # 12h AM/PM
+    m = re.match(r'(\d{1,2}):(\d{2})\s*(AM|PM)', time_str)
+    if m:
+        h, mn, period = int(m.group(1)), int(m.group(2)), m.group(3)
+        if period == 'AM':
+            h = h % 12
+        else:
+            if h != 12:
+                h += 12
+        return (h, mn, f'{h:02d}:{mn:02d}')
+    # 24h
+    m = re.match(r'(\d{1,2}):(\d{2})', time_str)
+    if m:
+        h, mn = int(m.group(1)), int(m.group(2))
+        return (h, mn, f'{h:02d}:{mn:02d}')
+    return None
+
+
+def is_morning(h, mn):
+    return (h >= 9 and h < 12) or (h == 12 and mn <= 30)
+
+
+def search_cinema(cinema_name, location, price, saturday, sunday):
+    """Run targeted Google searches for a cinema's kids showings."""
+    sat_date = saturday.strftime('%-d %B %Y')
+    sun_date = sunday.strftime('%-d %B %Y')
+
+    results = {'saturday': [], 'sunday': []}
+
+    # Search queries to try
+    queries = [
+        f'{cinema_name} kids club {sat_date} {sun_date}',
+        f'{cinema_name} family favourites {sat_date} showings',
+        f'{cinema_name} kids morning showing {saturday.strftime("%B %Y")}',
+    ]
+
+    for query in queries:
+        print(f"  Searching: {query}")
+        data = google_search(query)
+        found = extract_showings_from_results(data, saturday, sunday, price, cinema_name)
+
+        results['saturday'].extend(found['saturday'])
+        results['sunday'].extend(found['sunday'])
+
+        if results['saturday'] or results['sunday']:
+            break  # Got results, no need to try more queries
+
+        time.sleep(2)
+
+    # Final dedup
+    for day in ['saturday', 'sunday']:
+        seen = set()
+        deduped = []
+        for item in results[day]:
+            k = item['title'] + item['time']
+            if k not in seen:
+                seen.add(k)
+                deduped.append(item)
+        results[day] = deduped
+
+    print(f"  {cinema_name}: Sat={len(results['saturday'])}, Sun={len(results['sunday'])}")
+    return results
 
 
 def main():
-    saturday, sunday = get_weekend_dates()
-    sat_str = saturday.strftime('%Y-%m-%d')
-    sun_str = sunday.strftime('%Y-%m-%d')
+    if not SERPAPI_KEY:
+        print("ERROR: SERPAPI_KEY environment variable not set!")
+        exit(1)
 
+    saturday, sunday = get_weekend_dates()
     print(f"Weekend: {saturday.strftime('%A %d %b')} & {sunday.strftime('%A %d %b')}")
+
+    CINEMA_SEARCHES = [
+        ('arc_beeston',         'Arc Cinema Beeston',          'Beeston Nottingham',  '£3.50'),
+        ('showcase_nottingham', 'Showcase Cinema Nottingham',  'Nottingham',          '£2.49'),
+        ('showcase_derby',      'Showcase Cinema Derby',       'Derby',               '£2.49'),
+        ('savoy_nottingham',    'Savoy Cinema Nottingham',     'Nottingham',          '£2.15'),
+        ('odeon_derby',         'Odeon Derby',                 'Derby',               'Odeon Kids'),
+    ]
+
+    CINEMA_URLS = {
+        'arc_beeston':         'https://beeston.arccinema.co.uk/whatson/kidsclub',
+        'showcase_nottingham': 'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-cinema-de-lux-nottingham',
+        'showcase_derby':      'https://www.showcasecinemas.co.uk/whats-on/?cinema=showcase-derby',
+        'savoy_nottingham':    'https://savoyonline.co.uk',
+        'odeon_derby':         'https://www.odeon.co.uk/cinemas/derby/161/',
+    }
 
     output = {
         'updated': datetime.now().strftime('%a %d %b %Y at %H:%M'),
@@ -218,20 +271,21 @@ def main():
         'cinemas': {}
     }
 
-    for key, config in CINEMAS.items():
-        print(f"\n=== {config['name']} ===")
+    for key, name, location, price in CINEMA_SEARCHES:
+        print(f"\n=== {name} ===")
+        cinema_results = search_cinema(name, location, price, saturday, sunday)
 
-        sat_shows = scrape_imdb(config['imdb_id'], config['postcode'],
-                                sat_str, config['name'], config['price'])
-        time.sleep(3)
-        sun_shows = scrape_imdb(config['imdb_id'], config['postcode'],
-                                sun_str, config['name'], config['price'])
-        time.sleep(3)
+        # If search found nothing, show a helpful placeholder
+        for day in ['saturday', 'sunday']:
+            if not cinema_results[day]:
+                cinema_results[day] = [{
+                    'title': f'Tap "Book tickets" to see this week\'s film',
+                    'time': '10:00' if 'Showcase' in name else 'Morning',
+                    'price': price
+                }]
 
-        output['cinemas'][key] = {
-            'saturday': sat_shows,
-            'sunday': sun_shows,
-        }
+        output['cinemas'][key] = cinema_results
+        time.sleep(3)
 
     os.makedirs('data', exist_ok=True)
     with open('data/showings.json', 'w') as f:
