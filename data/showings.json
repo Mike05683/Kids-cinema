@@ -1,29 +1,77 @@
 {
-  "updated": "Awaiting next scrape",
+  "updated": "Thu 05 Mar 2026 at 18:45",
   "weekend_dates": {
-    "saturday": "Sat 28 Feb",
-    "sunday": "Sun 01 Mar"
+    "saturday": "Sat 07 Mar",
+    "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [{"title": "Miss Moxy", "time": "11:00", "price": "£3.50"}],
-      "sunday": [{"title": "Miss Moxy", "time": "11:00", "price": "£3.50"}]
+      "saturday": [
+        {
+          "title": "MISS MOXY",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "MISS MOXY",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        }
+      ]
     },
     "showcase_nottingham": {
-      "saturday": [{"title": "Family Favourites", "time": "10:00", "price": "£2.49"}],
-      "sunday": [{"title": "Family Favourites", "time": "10:00", "price": "£2.49"}]
+      "saturday": [
+        {
+          "title": "Family Favourites",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Family Favourites",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        }
+      ]
     },
     "showcase_derby": {
-      "saturday": [{"title": "Family Favourites", "time": "10:00", "price": "£2.49"}],
-      "sunday": [{"title": "Family Favourites", "time": "10:00", "price": "£2.49"}]
+      "saturday": [
+        {
+          "title": "Family Favourites",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Family Favourites",
+          "time": "10:00",
+          "price": "\u00a32.49"
+        }
+      ]
     },
     "savoy_nottingham": {
-      "saturday": [{"title": "The Scarecrows Wedding", "time": "10:00", "price": "£3.00"}],
-      "sunday": [{"title": "The Scarecrows Wedding", "time": "10:00", "price": "£3.00"}]
+      "saturday": [],
+      "sunday": []
     },
     "odeon_derby": {
-      "saturday": [{"title": "Odeon Kids", "time": "Morning", "price": "Odeon Kids pricing"}],
-      "sunday": [{"title": "Odeon Kids", "time": "Morning", "price": "Odeon Kids pricing"}]
+      "saturday": [
+        {
+          "title": "Odeon Kids",
+          "time": "Morning",
+          "price": "Odeon Kids pricing"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Odeon Kids",
+          "time": "Morning",
+          "price": "Odeon Kids pricing"
+        }
+      ]
     }
   }
 }
