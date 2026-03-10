@@ -610,19 +610,31 @@ def main():
     time.sleep(1)
     odeon = scrape_odeon_derby(saturday, sunday)
 
+    cinemas = {
+        'arc_beeston':         arc,
+        'showcase_nottingham': showcase['showcase_nottingham'],
+        'showcase_derby':      showcase['showcase_derby'],
+        'savoy_nottingham':    savoy,
+        'odeon_derby':         odeon,
+    }
+
+    total = sum(
+        len(v['saturday']) + len(v['sunday'])
+        for v in cinemas.values()
+    )
+
+    if total == 0:
+        print("No showings found for any cinema — listings may not be live yet.")
+        print("Leaving existing JSON untouched.")
+        return
+
     output = {
         'updated': now.strftime('%a %d %b %Y at %H:%M'),
         'weekend_dates': {
             'saturday': saturday.strftime('%a %d %b'),
             'sunday':   sunday.strftime('%a %d %b'),
         },
-        'cinemas': {
-            'arc_beeston':         arc,
-            'showcase_nottingham': showcase['showcase_nottingham'],
-            'showcase_derby':      showcase['showcase_derby'],
-            'savoy_nottingham':    savoy,
-            'odeon_derby':         odeon,
-        }
+        'cinemas': cinemas,
     }
 
     os.makedirs('data', exist_ok=True)
