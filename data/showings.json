@@ -1,11 +1,8 @@
 {
-  "updated": "Tue 10 Mar 2026 at 16:59",
+  "updated": "Tue 10 Mar 2026 at 17:06",
   "weekend_dates": {
-
     "saturday": "Sat 14 Mar",
     "sunday": "Sun 15 Mar"
-
-
   },
   "cinemas": {
     "arc_beeston": {
@@ -21,8 +18,30 @@
       "sunday": []
     },
     "savoy_nottingham": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Kid's Club",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        },
+        {
+          "title": "Night of the Zoopocalypse",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Kid's Club",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        },
+        {
+          "title": "Night of the Zoopocalypse",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        }
+      ]
     },
     "odeon_derby": {
       "saturday": [],
