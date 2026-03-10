@@ -38,12 +38,12 @@ SERPAPI_KEY = os.environ.get('SERPAPI_KEY')
 
 def get_weekend_dates():
     """
-    Returns the upcoming Saturday and Sunday.
-    - Sat / Sun before 13:05  -> this weekend
-    - Sun at/after 13:05      -> next weekend
-    - Mon–Fri                 -> next weekend
+    Returns the upcoming Saturday and Sunday (midnight-normalised, UTC).
+    - Sat / Sun before 13:05 UTC  -> this weekend
+    - Sun at/after 13:05 UTC      -> next weekend
+    - Mon–Fri                     -> next weekend
     """
-    now = datetime.now()
+    now = datetime.utcnow()
     weekday = now.weekday()  # 0=Mon … 5=Sat, 6=Sun
 
     if weekday == 5:  # Saturday
@@ -58,6 +58,7 @@ def get_weekend_dates():
         days_ahead = (5 - weekday) % 7
         saturday = now + timedelta(days=days_ahead)
 
+    saturday = saturday.replace(hour=0, minute=0, second=0, microsecond=0)
     sunday = saturday + timedelta(days=1)
     return saturday, sunday
 
@@ -365,6 +366,7 @@ def scrape_showcase(saturday, sunday):
             title = title_el.get_text(strip=True)
             if not title or len(title) < 3:
                 continue
+            card_text = card.get_text(separator=' ')
             for day_key, d_short in [('saturday', sat_short), ('sunday', sun_short)]:
                 if d_short in card_text:
                     m = re.search(r'\b(\d{1,2}:\d{2})\b', card_text)
@@ -577,8 +579,8 @@ def _walk_odeon_json(obj, sat_iso, sun_iso, results):
 # ---------------------------------------------------------------------------
 
 def main():
-    now = datetime.now()
-    print(f"Run time: {now.strftime('%A %d %b at %H:%M')}")
+    now = datetime.utcnow()
+    print(f"Run time: {now.strftime('%A %d %b at %H:%M UTC')}")
     print(f"SerpAPI key: {'set' if SERPAPI_KEY else 'NOT SET'}")
 
     saturday, sunday = get_weekend_dates()
@@ -611,7 +613,7 @@ def main():
         return
 
     output = {
-        'updated': now.strftime('%a %d %b %Y at %H:%M'),
+        'updated': now.strftime('%a %d %b %Y at %H:%M UTC'),
         'weekend_dates': {
             'saturday': saturday.strftime('%a %d %b'),
             'sunday':   sunday.strftime('%a %d %b'),
