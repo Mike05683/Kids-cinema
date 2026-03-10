@@ -2,13 +2,12 @@
 """
 Kids Cinema Weekend Scraper
 
-Schedule: Wednesday 20:00 UTC and Thursday 00:01 UTC via GitHub Actions.
+Schedule: Every day at 06:00 UTC and 13:00 UTC via GitHub Actions.
 
 Weekend date logic:
-- Sat/Sun morning     -> show THIS weekend
-- Sun after 12pm      -> too early, leave existing JSON untouched
-- Mon/Tue             -> too early, leave existing JSON untouched
-- Wed/Thu/Fri         -> show NEXT weekend (listings now live)
+- Sat / Sun before 13:05  -> show THIS weekend
+- Sun at/after 13:05      -> show NEXT weekend
+- Mon–Fri                 -> show NEXT weekend
 
 Cinemas:
 - Arc Beeston:           direct HTML scraping
@@ -39,40 +38,28 @@ SERPAPI_KEY = os.environ.get('SERPAPI_KEY')
 
 def get_weekend_dates():
     """
-    Returns the upcoming (or current) Saturday and Sunday.
-    - Sat/Sun morning  -> return this weekend
-    - Mon/Tue          -> too early (caller checks too_early_to_scrape)
-    - Wed/Thu/Fri      -> return next Saturday/Sunday
+    Returns the upcoming Saturday and Sunday.
+    - Sat / Sun before 13:05  -> this weekend
+    - Sun at/after 13:05      -> next weekend
+    - Mon–Fri                 -> next weekend
     """
-    today = datetime.today()
-    weekday = today.weekday()  # 0=Mon … 5=Sat, 6=Sun
+    now = datetime.now()
+    weekday = now.weekday()  # 0=Mon … 5=Sat, 6=Sun
 
-    if weekday == 5:       # Saturday
-        saturday = today
-    elif weekday == 6:     # Sunday
-        saturday = today - timedelta(days=1)
-    else:                  # Mon-Fri: find next Saturday
+    if weekday == 5:  # Saturday
+        saturday = now
+    elif weekday == 6:  # Sunday
+        after_105pm = now.hour > 13 or (now.hour == 13 and now.minute >= 5)
+        if after_105pm:
+            saturday = now + timedelta(days=6)   # next Saturday
+        else:
+            saturday = now - timedelta(days=1)   # this Saturday
+    else:  # Mon–Fri: find next Saturday
         days_ahead = (5 - weekday) % 7
-        saturday = today + timedelta(days=days_ahead)
+        saturday = now + timedelta(days=days_ahead)
 
     sunday = saturday + timedelta(days=1)
     return saturday, sunday
-
-
-def too_early_to_scrape():
-    """
-    True if listings for next weekend aren't published yet.
-    Listings go live Wednesday evening, so scraping before then is pointless.
-    Set FORCE_SCRAPE=1 to bypass (used for manual runs).
-    """
-    if os.environ.get('FORCE_SCRAPE') == '1':
-        print("FORCE_SCRAPE set - skipping early check.")
-        return False
-    now = datetime.now()
-    weekday = now.weekday()
-    is_sunday_afternoon = (weekday == 6 and now.hour > 12)
-    is_monday_or_tuesday = weekday in (0, 1)
-    return is_sunday_afternoon or is_monday_or_tuesday
 
 
 # ---------------------------------------------------------------------------
@@ -593,11 +580,6 @@ def main():
     now = datetime.now()
     print(f"Run time: {now.strftime('%A %d %b at %H:%M')}")
     print(f"SerpAPI key: {'set' if SERPAPI_KEY else 'NOT SET'}")
-
-    if too_early_to_scrape():
-        print("Too early to scrape - next weekend listings not published yet.")
-        print("Leaving existing JSON untouched so site shows last weekend's data.")
-        return
 
     saturday, sunday = get_weekend_dates()
     print(f"Weekend: {saturday.strftime('%A %d %b')} & {sunday.strftime('%A %d %b')}")
