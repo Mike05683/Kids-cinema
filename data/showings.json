@@ -1,8 +1,8 @@
 {
-  "updated": "Tue 10 Mar 2026 at 08:18",
+  "updated": "Tue 10 Mar 2026 at 10:35",
   "weekend_dates": {
-    "saturday": "Sat 07 Mar",
-    "sunday": "Sun 08 Mar"
+    "saturday": "Wed 11 Mar",
+    "sunday": "Thu 12 Mar"
   },
   "cinemas": {
     "arc_beeston": {
@@ -10,56 +10,20 @@
       "sunday": []
     },
     "showcase_nottingham": {
-      "saturday": [
-        {
-          "title": "Family Favourites",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Family Favourites",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     },
     "showcase_derby": {
-      "saturday": [
-        {
-          "title": "Family Favourites",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Family Favourites",
-          "time": "10:00",
-          "price": "\u00a32.49"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     },
     "savoy_nottingham": {
       "saturday": [],
       "sunday": []
     },
     "odeon_derby": {
-      "saturday": [
-        {
-          "title": "Odeon Kids",
-          "time": "Morning",
-          "price": "Odeon Kids pricing"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "Odeon Kids",
-          "time": "Morning",
-          "price": "Odeon Kids pricing"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     }
   }
 }
