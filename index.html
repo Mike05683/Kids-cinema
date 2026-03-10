@@ -321,8 +321,8 @@
 </header>
 
 <div class="day-tabs">
-  <button class="tab-btn active" onclick="showDay('saturday')" id="tab-sat">Wednesday</button>
-  <button class="tab-btn" onclick="showDay('sunday')" id="tab-sun">Thursday</button>
+  <button class="tab-btn active" onclick="showDay('saturday')" id="tab-sat">Saturday</button>
+  <button class="tab-btn" onclick="showDay('sunday')" id="tab-sun">Sunday</button>
 </div>
 
 <div class="container" id="content">
@@ -512,7 +512,7 @@
             'Accept': 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28',
           },
-          body: JSON.stringify({ ref: 'main' }),
+          body: JSON.stringify({ ref: 'claude/fix-auto-update-ZK87e' }),
         }
       );
 

@@ -35,19 +35,26 @@ jobs:
           FORCE_SCRAPE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
         run: python scraper.py
 
-      - name: Commit and push changes
+      - name: Commit data to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Stage EVERYTHING your scraper changed (index.html, data/showings.json, etc.)
-          git add -A
+          # Capture the freshly-scraped JSON
+          DATA=$(cat data/showings.json)
 
-          # If nothing changed, exit cleanly
+          # Switch to main so GitHub Pages picks up the update
+          git fetch origin main
+          git checkout main
+
+          # Write the new data and commit only that file
+          echo "$DATA" > data/showings.json
+          git add data/showings.json
+
           if git diff --staged --quiet; then
             echo "No changes detected"
             exit 0
           fi
 
           git commit -m "chore: update cinema showings $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push
+          git push origin main

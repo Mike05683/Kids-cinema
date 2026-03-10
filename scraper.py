@@ -39,18 +39,24 @@ SERPAPI_KEY = os.environ.get('SERPAPI_KEY')
 
 def get_weekend_dates():
     """
-    TEMPORARY TEST MODE: returns the upcoming Wednesday and Thursday.
-    This lets us verify the scraper finds real listings for current/future
-    dates rather than past weekends.
-    Revert to weekend logic once confirmed working.
+    Returns the upcoming (or current) Saturday and Sunday.
+    - Sat/Sun morning  -> return this weekend
+    - Mon/Tue          -> too early (caller checks too_early_to_scrape)
+    - Wed/Thu/Fri      -> return next Saturday/Sunday
     """
     today = datetime.today()
-    days_ahead = (2 - today.weekday()) % 7  # days until next Wednesday
-    if days_ahead == 0:
-        days_ahead = 7  # if today IS Wednesday, target next Wednesday
-    wednesday = today + timedelta(days=days_ahead)
-    thursday = wednesday + timedelta(days=1)
-    return wednesday, thursday
+    weekday = today.weekday()  # 0=Mon … 5=Sat, 6=Sun
+
+    if weekday == 5:       # Saturday
+        saturday = today
+    elif weekday == 6:     # Sunday
+        saturday = today - timedelta(days=1)
+    else:                  # Mon-Fri: find next Saturday
+        days_ahead = (5 - weekday) % 7
+        saturday = today + timedelta(days=days_ahead)
+
+    sunday = saturday + timedelta(days=1)
+    return saturday, sunday
 
 
 def too_early_to_scrape():
@@ -75,7 +81,8 @@ def too_early_to_scrape():
 
 def scrape_arc(saturday, sunday):
     """
-    Arc Beeston kids club page.
+    Arc Beeston – all showings (kids-club filter temporarily removed to
+    verify the scraper pipeline is working end-to-end).
     Structure:
       ## [FILM TITLE](/event/XXXXX)
       Sat 07 Mar
@@ -84,7 +91,7 @@ def scrape_arc(saturday, sunday):
     results = {'saturday': [], 'sunday': []}
     try:
         r = requests.get(
-            'https://beeston.arccinema.co.uk/whatson/kidsclub',
+            'https://beeston.arccinema.co.uk/whatson/',
             headers=HEADERS, timeout=15
         )
         soup = BeautifulSoup(r.text, 'html.parser')
@@ -204,7 +211,8 @@ def scrape_savoy(saturday, sunday):
                 elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
                     current_day = 'sunday'
 
-                if 'KC' in line and current_day:
+                # KC filter temporarily removed – include any timed showing
+                if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
                     for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
                         results[current_day].append(
                             {'title': title, 'time': t, 'price': '£3.00'}
@@ -362,14 +370,9 @@ def scrape_showcase(saturday, sunday):
                 pass
 
         # -- Strategy 3: HTML film cards --
-        page_text = soup.get_text().lower()
-        is_ff_page = 'family favourites' in page_text
-
+        # Family Favourites filter temporarily removed to verify scraper works
         for card in soup.find_all(['article', 'div', 'li'],
                                    class_=re.compile(r'film|card|listing|event', re.I)):
-            card_text = card.get_text(separator=' ')
-            if not is_ff_page and 'family favourites' not in card_text.lower():
-                continue
             title_el = card.find(['h2', 'h3', 'h4'])
             if not title_el:
                 continue
