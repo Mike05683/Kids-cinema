@@ -79,37 +79,44 @@
       margin-top: 6px;
     }
 
-    .day-tabs {
+    .day-picker {
       display: flex;
       justify-content: center;
+      align-items: center;
       gap: 10px;
       padding: 20px 16px 8px;
     }
 
-    .tab-btn {
-      background: white;
-      border: 2.5px solid var(--navy);
-      border-radius: 30px;
-      padding: 8px 24px;
+    .day-picker label {
       font-family: 'Nunito', sans-serif;
       font-weight: 900;
       font-size: 1rem;
-      cursor: pointer;
       color: var(--navy);
-      transition: all 0.2s;
-      box-shadow: 3px 3px 0 var(--navy);
     }
 
-    .tab-btn.active {
-      background: var(--navy);
-      color: var(--yellow);
+    .day-select {
+      background: white;
+      border: 2.5px solid var(--navy);
+      border-radius: 30px;
+      padding: 8px 20px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 900;
+      font-size: 1rem;
+      color: var(--navy);
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--navy);
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2303045E' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    .day-select:focus {
+      outline: none;
       box-shadow: none;
       transform: translate(2px, 2px);
-    }
-
-    .tab-btn:hover:not(.active) {
-      transform: translate(-1px, -1px);
-      box-shadow: 4px 4px 0 var(--navy);
     }
 
     .container {
@@ -320,9 +327,12 @@
   </div>
 </header>
 
-<div class="day-tabs">
-  <button class="tab-btn active" onclick="showDay('saturday')" id="tab-sat">Saturday</button>
-  <button class="tab-btn" onclick="showDay('sunday')" id="tab-sun">Sunday</button>
+<div class="day-picker">
+  <label for="day-select">Show:</label>
+  <select class="day-select" id="day-select" onchange="showDay(this.value)">
+    <option value="saturday" id="opt-sat">Saturday</option>
+    <option value="sunday" id="opt-sun">Sunday</option>
+  </select>
 </div>
 
 <div class="container" id="content">
@@ -384,10 +394,12 @@
       if (!res.ok) throw new Error('No data yet');
       allData = await res.json();
 
-      // Show weekend dates
+      // Show weekend dates and update dropdown labels
       if (allData.weekend_dates) {
         document.getElementById('weekend-label').textContent =
           allData.weekend_dates.saturday + ' & ' + allData.weekend_dates.sunday;
+        document.getElementById('opt-sat').textContent = allData.weekend_dates.saturday;
+        document.getElementById('opt-sun').textContent = allData.weekend_dates.sunday;
       }
       if (allData.updated) {
         document.getElementById('updated-label').textContent =
@@ -426,8 +438,7 @@
 
   function showDay(day) {
     currentDay = day;
-    document.getElementById('tab-sat').classList.toggle('active', day === 'saturday');
-    document.getElementById('tab-sun').classList.toggle('active', day === 'sunday');
+    document.getElementById('day-select').value = day;
     if (allData) renderDay(day);
   }
 

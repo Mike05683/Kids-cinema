@@ -81,8 +81,7 @@ def too_early_to_scrape():
 
 def scrape_arc(saturday, sunday):
     """
-    Arc Beeston – all showings (kids-club filter temporarily removed to
-    verify the scraper pipeline is working end-to-end).
+    Arc Beeston – all weekend showings (no kids-club-only filter; shows everything).
     Structure:
       ## [FILM TITLE](/event/XXXXX)
       Sat 07 Mar
@@ -211,7 +210,7 @@ def scrape_savoy(saturday, sunday):
                 elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
                     current_day = 'sunday'
 
-                # KC filter temporarily removed – include any timed showing
+                # Include any timed showing (no KC-only filter)
                 if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
                     for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
                         results[current_day].append(
@@ -370,7 +369,7 @@ def scrape_showcase(saturday, sunday):
                 pass
 
         # -- Strategy 3: HTML film cards --
-        # Family Favourites filter temporarily removed to verify scraper works
+        # All film cards (no Family Favourites filter)
         for card in soup.find_all(['article', 'div', 'li'],
                                    class_=re.compile(r'film|card|listing|event', re.I)):
             title_el = card.find(['h2', 'h3', 'h4'])
