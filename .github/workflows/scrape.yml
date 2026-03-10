@@ -2,8 +2,8 @@ name: Scrape Kids Cinema Showings
 
 on:
   schedule:
-    - cron: '1 0 * * 3'
-    - cron: '1 0 * * 4'
+    - cron: '0 20 * * 3'   # Wednesday at 20:00 UTC (evening, after listings go live)
+    - cron: '1 0 * * 4'    # Thursday at 00:01 UTC (backup run)
   workflow_dispatch:
 
 permissions:

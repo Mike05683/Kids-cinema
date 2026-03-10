@@ -278,6 +278,7 @@
   <div class="subtitle">Nottingham &amp; Derby area • Kids club &amp; family morning shows</div>
   <div class="weekend-label" id="weekend-label">This weekend</div>
   <div class="updated" id="updated-label">Loading data...</div>
+  <button class="refresh-btn" id="refresh-btn" onclick="refreshData()" style="display:none">↻ Refresh</button>
 </header>
 
 <div class="day-tabs">
@@ -355,6 +356,7 @@
       }
 
       renderDay(currentDay);
+      document.getElementById('refresh-btn').style.display = 'block';
     } catch (e) {
       document.getElementById('content').innerHTML = `
         <div class="error-msg">
@@ -365,8 +367,22 @@
           <a href="https://www.showcasecinemas.co.uk/family-favourites/" target="_blank" style="color:var(--teal)">Showcase Family Favourites</a> •
           <a href="https://savoyonline.co.uk" target="_blank" style="color:var(--teal)">Savoy Nottingham</a> •
           <a href="https://www.odeon.co.uk/cinemas/derby/161/" target="_blank" style="color:var(--teal)">Odeon Derby</a>
+          <br><br>
+          <button class="refresh-btn" onclick="refreshData()">↻ Try again</button>
         </div>`;
     }
+  }
+
+  function refreshData() {
+    allData = null;
+    document.getElementById('refresh-btn').style.display = 'none';
+    document.getElementById('updated-label').textContent = 'Loading data...';
+    document.getElementById('content').innerHTML = `
+      <div class="loading">
+        <span>🎥</span><span>🍿</span><span>🎬</span>
+        <p style="margin-top:12px">Loading showings...</p>
+      </div>`;
+    loadData();
   }
 
   function showDay(day) {
