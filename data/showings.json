@@ -54,8 +54,30 @@
       ]
     },
     "savoy_nottingham": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "Kid's Club",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        },
+        {
+          "title": "Night of the Zoopocalypse",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "Kid's Club",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        },
+        {
+          "title": "Night of the Zoopocalypse",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        }
+      ]
     },
     "odeon_derby": {
       "saturday": [
