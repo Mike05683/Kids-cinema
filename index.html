@@ -263,6 +263,39 @@
       font-size: 0.85rem;
     }
 
+    .trigger-btn {
+      display: inline-block;
+      margin: 10px auto 0;
+      background: var(--pink);
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 7px 22px;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .trigger-btn:disabled { opacity: 0.6; cursor: default; }
+
+    .token-setup {
+      margin: 8px auto 0;
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .token-setup input {
+      border: 1.5px solid rgba(255,255,255,0.4);
+      border-radius: 12px;
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      width: 200px;
+    }
+    .token-setup input::placeholder { color: rgba(255,255,255,0.5); }
+
     footer {
       text-align: center;
       font-size: 0.75rem;
@@ -279,6 +312,12 @@
   <div class="weekend-label" id="weekend-label">This weekend</div>
   <div class="updated" id="updated-label">Loading data...</div>
   <button class="refresh-btn" id="refresh-btn" onclick="refreshData()" style="display:none">↻ Refresh</button>
+  <button class="trigger-btn" id="trigger-btn" onclick="triggerScraper()">⚡ Run Scraper</button>
+  <div class="token-setup" id="token-setup" style="display:none">
+    <input type="password" id="gh-token-input" placeholder="GitHub token…" />
+    <button class="trigger-btn" onclick="saveToken()">Save</button>
+    <button class="trigger-btn" style="background:var(--teal)" onclick="cancelToken()">Cancel</button>
+  </div>
 </header>
 
 <div class="day-tabs">
@@ -425,6 +464,77 @@
     }
 
     container.innerHTML = html;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scraper trigger (GitHub Actions workflow_dispatch via API)
+  // ---------------------------------------------------------------------------
+  const REPO      = 'Mike05683/Kids-cinema';
+  const WORKFLOW  = 'scrape.yml';
+  const TOKEN_KEY = 'kids-cinema-gh-token';
+
+  function triggerScraper() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      document.getElementById('trigger-btn').style.display = 'none';
+      document.getElementById('token-setup').style.display = 'flex';
+      return;
+    }
+    _dispatchWorkflow(token);
+  }
+
+  function saveToken() {
+    const val = document.getElementById('gh-token-input').value.trim();
+    if (!val) return;
+    localStorage.setItem(TOKEN_KEY, val);
+    document.getElementById('token-setup').style.display = 'none';
+    document.getElementById('trigger-btn').style.display = 'inline-block';
+    _dispatchWorkflow(val);
+  }
+
+  function cancelToken() {
+    document.getElementById('token-setup').style.display = 'none';
+    document.getElementById('trigger-btn').style.display = 'inline-block';
+  }
+
+  async function _dispatchWorkflow(token) {
+    const btn = document.getElementById('trigger-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Starting…';
+
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          body: JSON.stringify({ ref: 'main' }),
+        }
+      );
+
+      if (res.status === 204) {
+        btn.textContent = '✓ Started! Auto-refreshing in 2 min…';
+        setTimeout(() => {
+          refreshData();
+          btn.textContent = '⚡ Run Scraper';
+          btn.disabled = false;
+        }, 120000);
+      } else if (res.status === 401) {
+        localStorage.removeItem(TOKEN_KEY);
+        btn.textContent = '✗ Invalid token — click to re-enter';
+        btn.disabled = false;
+      } else {
+        btn.textContent = `✗ Error ${res.status} — try again`;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      btn.textContent = '✗ Network error — try again';
+      btn.disabled = false;
+    }
   }
 
   loadData();
