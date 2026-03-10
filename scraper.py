@@ -39,18 +39,24 @@ SERPAPI_KEY = os.environ.get('SERPAPI_KEY')
 
 def get_weekend_dates():
     """
-    TEMPORARY TEST MODE: returns the upcoming Wednesday and Thursday.
-    This lets us verify the scraper finds real listings for current/future
-    dates rather than past weekends.
-    Revert to weekend logic once confirmed working.
+    Returns the upcoming (or current) Saturday and Sunday.
+    - Sat/Sun morning  -> return this weekend
+    - Mon/Tue          -> too early (caller checks too_early_to_scrape)
+    - Wed/Thu/Fri      -> return next Saturday/Sunday
     """
     today = datetime.today()
-    days_ahead = (2 - today.weekday()) % 7  # days until next Wednesday
-    if days_ahead == 0:
-        days_ahead = 7  # if today IS Wednesday, target next Wednesday
-    wednesday = today + timedelta(days=days_ahead)
-    thursday = wednesday + timedelta(days=1)
-    return wednesday, thursday
+    weekday = today.weekday()  # 0=Mon … 5=Sat, 6=Sun
+
+    if weekday == 5:       # Saturday
+        saturday = today
+    elif weekday == 6:     # Sunday
+        saturday = today - timedelta(days=1)
+    else:                  # Mon-Fri: find next Saturday
+        days_ahead = (5 - weekday) % 7
+        saturday = today + timedelta(days=days_ahead)
+
+    sunday = saturday + timedelta(days=1)
+    return saturday, sunday
 
 
 def too_early_to_scrape():
