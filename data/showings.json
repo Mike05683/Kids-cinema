@@ -1,25 +1,13 @@
 {
-  "updated": "Thu 05 Mar 2026 at 18:45",
+  "updated": "Tue 10 Mar 2026 at 07:47",
   "weekend_dates": {
     "saturday": "Sat 07 Mar",
     "sunday": "Sun 08 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [
-        {
-          "title": "MISS MOXY",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        }
-      ],
-      "sunday": [
-        {
-          "title": "MISS MOXY",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        }
-      ]
+      "saturday": [],
+      "sunday": []
     },
     "showcase_nottingham": {
       "saturday": [
