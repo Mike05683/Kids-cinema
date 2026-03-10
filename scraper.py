@@ -39,25 +39,18 @@ SERPAPI_KEY = os.environ.get('SERPAPI_KEY')
 
 def get_weekend_dates():
     """
-    Returns the Saturday and Sunday to display based on day of week.
-    Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6
+    TEMPORARY TEST MODE: returns the upcoming Wednesday and Thursday.
+    This lets us verify the scraper finds real listings for current/future
+    dates rather than past weekends.
+    Revert to weekend logic once confirmed working.
     """
     today = datetime.today()
-    weekday = today.weekday()
-
-    if weekday == 5:
-        saturday = today
-    elif weekday == 6:
-        saturday = today - timedelta(days=1)
-    elif weekday in (0, 1):
-        days_since_saturday = weekday + 2
-        saturday = today - timedelta(days=days_since_saturday)
-    else:
-        days_until_saturday = 5 - weekday
-        saturday = today + timedelta(days=days_until_saturday)
-
-    sunday = saturday + timedelta(days=1)
-    return saturday, sunday
+    days_ahead = (2 - today.weekday()) % 7  # days until next Wednesday
+    if days_ahead == 0:
+        days_ahead = 7  # if today IS Wednesday, target next Wednesday
+    wednesday = today + timedelta(days=days_ahead)
+    thursday = wednesday + timedelta(days=1)
+    return wednesday, thursday
 
 
 def too_early_to_scrape():
@@ -204,9 +197,11 @@ def scrape_savoy(saturday, sunday):
 
             current_day = None
             for line in lines:
-                if any(x in line for x in [sat_d, sat_d2, sat_long, 'Sat ']):
+                sat_abbr = saturday.strftime('%a ')   # e.g. "Sat " or "Wed "
+                sun_abbr = sunday.strftime('%a ')     # e.g. "Sun " or "Thu "
+                if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr]):
                     current_day = 'saturday'
-                elif any(x in line for x in [sun_d, sun_d2, sun_long, 'Sun ']):
+                elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
                     current_day = 'sunday'
 
                 if 'KC' in line and current_day:
