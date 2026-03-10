@@ -81,8 +81,7 @@ def too_early_to_scrape():
 
 def scrape_arc(saturday, sunday):
     """
-    Arc Beeston – all showings (kids-club filter temporarily removed to
-    verify the scraper pipeline is working end-to-end).
+    Arc Beeston – all weekend showings (no kids-club-only filter; shows everything).
     Structure:
       ## [FILM TITLE](/event/XXXXX)
       Sat 07 Mar
@@ -211,7 +210,7 @@ def scrape_savoy(saturday, sunday):
                 elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
                     current_day = 'sunday'
 
-                # KC filter temporarily removed – include any timed showing
+                # Include any timed showing (no KC-only filter)
                 if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
                     for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
                         results[current_day].append(
@@ -370,7 +369,7 @@ def scrape_showcase(saturday, sunday):
                 pass
 
         # -- Strategy 3: HTML film cards --
-        # Family Favourites filter temporarily removed to verify scraper works
+        # All film cards (no Family Favourites filter)
         for card in soup.find_all(['article', 'div', 'li'],
                                    class_=re.compile(r'film|card|listing|event', re.I)):
             title_el = card.find(['h2', 'h3', 'h4'])
@@ -611,19 +610,31 @@ def main():
     time.sleep(1)
     odeon = scrape_odeon_derby(saturday, sunday)
 
+    cinemas = {
+        'arc_beeston':         arc,
+        'showcase_nottingham': showcase['showcase_nottingham'],
+        'showcase_derby':      showcase['showcase_derby'],
+        'savoy_nottingham':    savoy,
+        'odeon_derby':         odeon,
+    }
+
+    total = sum(
+        len(v['saturday']) + len(v['sunday'])
+        for v in cinemas.values()
+    )
+
+    if total == 0:
+        print("No showings found for any cinema — listings may not be live yet.")
+        print("Leaving existing JSON untouched.")
+        return
+
     output = {
         'updated': now.strftime('%a %d %b %Y at %H:%M'),
         'weekend_dates': {
             'saturday': saturday.strftime('%a %d %b'),
             'sunday':   sunday.strftime('%a %d %b'),
         },
-        'cinemas': {
-            'arc_beeston':         arc,
-            'showcase_nottingham': showcase['showcase_nottingham'],
-            'showcase_derby':      showcase['showcase_derby'],
-            'savoy_nottingham':    savoy,
-            'odeon_derby':         odeon,
-        }
+        'cinemas': cinemas,
     }
 
     os.makedirs('data', exist_ok=True)
