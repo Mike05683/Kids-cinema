@@ -90,7 +90,7 @@ def scrape_arc(saturday, sunday):
 
         SKIP_TITLES = {'details', 'book now', 'more info', 'info', 'back', 'next', 'prev'}
 
-        for link in soup.find_all('a', href=re.compile(r'^/event/')):
+        for link in soup.find_all('a', href=re.compile(r'(/event/|arccinema\.co\.uk/event/)')):
             title = link.get_text(strip=True)
             if not title or len(title) < 2 or title.lower() in SKIP_TITLES:
                 continue
@@ -311,12 +311,12 @@ def scrape_showcase(saturday, sunday):
 
     CINEMAS = {
         'showcase_nottingham': {
-            'slug':         'showcase-cinema-de-lux-nottingham',
+            'slugs':        ['nottingham', 'showcase-cinema-de-lux-nottingham', 'showcase-nottingham'],
             'serp_query':   'Family Favourites Showcase Nottingham',
             'serp_filter':  'Showcase',
         },
         'showcase_derby': {
-            'slug':         'showcase-derby',
+            'slugs':        ['derby', 'showcase-derby', 'showcase-cinema-derby'],
             'serp_query':   'Family Favourites Showcase Derby',
             'serp_filter':  'Showcase',
         },
@@ -389,15 +389,17 @@ def scrape_showcase(saturday, sunday):
     for key, cfg in CINEMAS.items():
         if results[key]['saturday'] or results[key]['sunday']:
             continue
-        try:
-            url = f"https://www.showcasecinemas.co.uk/whats-on/?cinema={cfg['slug']}"
-            r = session.get(url, timeout=20)
-            print(f"Showcase {key}: HTTP {r.status_code}, {len(r.text)} bytes")
-            if r.status_code == 200:
-                soup = BeautifulSoup(r.text, 'html.parser')
-                _try_parse(soup, key)
-        except Exception as e:
-            print(f"Showcase {key} error: {e}")
+        for slug in cfg['slugs']:
+            try:
+                url = f"https://www.showcasecinemas.co.uk/whats-on/?cinema={slug}"
+                r = session.get(url, timeout=20)
+                print(f"Showcase {key} ({slug}): HTTP {r.status_code}, {len(r.text)} bytes")
+                if r.status_code == 200:
+                    soup = BeautifulSoup(r.text, 'html.parser')
+                    _try_parse(soup, key)
+                    break  # stop trying slugs once we get a 200
+            except Exception as e:
+                print(f"Showcase {key} ({slug}) error: {e}")
 
     # SerpAPI fallback for anything still empty
     if SERPAPI_KEY:
@@ -460,9 +462,9 @@ def scrape_odeon_derby(saturday, sunday):
     Odeon Derby - Odeon Kids programme.
 
     Strategy:
-    1. Fetch the Odeon Kids page and Derby cinema page.
-       Extract __NEXT_DATA__ JSON (Odeon uses Next.js) or JSON-LD.
-    2. Fall back to SerpAPI if nothing found.
+    1. Try Odeon's internal JSON API endpoints (less bot-protected than HTML pages).
+    2. Fall back to the Odeon Kids HTML page and Derby cinema page (__NEXT_DATA__/JSON-LD).
+    3. Fall back to SerpAPI if nothing found.
     """
     results = {'saturday': [], 'sunday': []}
     sat_date = saturday.strftime('%Y-%m-%d')
@@ -470,6 +472,32 @@ def scrape_odeon_derby(saturday, sunday):
 
     session = requests.Session()
     session.headers.update(HEADERS)
+    session.headers.update({
+        'Accept': 'application/json, text/html,*/*;q=0.8',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+    })
+
+    # Try JSON API endpoints first (lighter bot protection than full page renders)
+    API_URLS = [
+        f'https://www.odeon.co.uk/api/showtimes/cinemas/161/?date={sat_date}',
+        f'https://www.odeon.co.uk/api/showtimes/cinemas/161/?date={sun_date}',
+        'https://www.odeon.co.uk/api/films/kids/?siteId=161',
+    ]
+    for api_url in API_URLS:
+        try:
+            r = session.get(api_url, timeout=20)
+            print(f"Odeon API ({api_url.split('?')[0].split('/')[-2]}): HTTP {r.status_code}, {len(r.text)} bytes")
+            if r.status_code == 200:
+                try:
+                    data = r.json()
+                    _walk_odeon_json(data, sat_date, sun_date, results)
+                    print(f"  After API parse: Sat={len(results['saturday'])}, Sun={len(results['sunday'])}")
+                except Exception as e:
+                    print(f"  Odeon API JSON error: {e}")
+        except Exception as e:
+            print(f"Odeon API fetch error: {e}")
 
     URLS = [
         'https://www.odeon.co.uk/films/odeon-kids/',
@@ -478,7 +506,7 @@ def scrape_odeon_derby(saturday, sunday):
 
     for url in URLS:
         if results['saturday'] or results['sunday']:
-            break
+            break  # API already got data
         try:
             r = session.get(url, timeout=20)
             print(f"Odeon Derby ({url.split('/')[-2]}): HTTP {r.status_code}, {len(r.text)} bytes")
