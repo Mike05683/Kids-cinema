@@ -44,7 +44,7 @@ jobs:
 
           # Switch to main so GitHub Pages picks up the update
           git fetch origin main
-          git checkout main
+          git checkout -f main
 
           # Write the new data and commit only that file
           echo "$DATA" > data/showings.json
