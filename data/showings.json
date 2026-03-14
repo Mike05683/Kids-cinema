@@ -1,5 +1,5 @@
 {
-  "updated": "Sat 14 Mar 2026 at 06:44 UTC",
+  "updated": "Sat 14 Mar 2026 at 13:38 UTC",
   "weekend_dates": {
     "saturday": "Sat 14 Mar",
     "sunday": "Sun 15 Mar"
@@ -18,18 +18,7 @@
       "sunday": []
     },
     "savoy_nottingham": {
-      "saturday": [
-        {
-          "title": "Kid's Club",
-          "time": "10:00",
-          "price": "\u00a33.00"
-        },
-        {
-          "title": "Night of the Zoopocalypse",
-          "time": "10:00",
-          "price": "\u00a33.00"
-        }
-      ],
+      "saturday": [],
       "sunday": [
         {
           "title": "Kid's Club",
