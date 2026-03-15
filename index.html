@@ -453,12 +453,30 @@
 
     if (totalShowings === 0) {
       const wd = allData.weekend_dates;
-      const label = wd ? `${wd.saturday} & ${wd.sunday}` : 'next weekend';
+      const label = wd ? `${wd.saturday} & ${wd.sunday}` : 'this weekend';
+
+      // Work out if the targeted weekend is in the future (listings not posted yet)
+      // vs current/past weekend (scraper failed to find data that should exist)
+      let isFutureWeekend = false;
+      if (wd && wd.saturday) {
+        // Parse "Sat 14 Mar" -> compare to today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const parts = wd.saturday.split(' '); // ["Sat", "14", "Mar"]
+        if (parts.length >= 3) {
+          const d = new Date(`${parts[2]} ${parts[1]} ${today.getFullYear()}`);
+          d.setHours(0, 0, 0, 0);
+          isFutureWeekend = d > today;
+        }
+      }
+
+      const msg = isFutureWeekend
+        ? `No listings found yet for ${label}.<br>Cinemas usually post their Kids Club schedule mid-week — check back Tuesday or Wednesday!`
+        : `Couldn't fetch listings for ${label} — the cinema websites may have changed.<br>Click the links below to check directly:`;
+
       container.innerHTML = `
         <div class="error-msg" style="background:#fff8e1;border-color:#ffe082;color:#5d4037">
-          <strong>No listings found yet for ${label}.</strong><br>
-          Cinemas usually post their Kids Club schedule mid-week.<br>
-          Check back Tuesday or Wednesday!
+          <strong>${msg}</strong>
           <br><br>
           <a href="https://beeston.arccinema.co.uk/whatson/kidsclub" target="_blank" style="color:var(--teal)">Arc Beeston Kids Club</a> •
           <a href="https://www.showcasecinemas.co.uk/family-favourites/" target="_blank" style="color:var(--teal)">Showcase Family Favourites</a> •

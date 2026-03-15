@@ -176,24 +176,32 @@ def _parse_arc(soup, saturday, sunday, results):
 
 def scrape_arc(saturday, sunday):
     """
-    Arc Beeston – try direct requests first (fast, works if SSR).
-    If 0 results, fall back to Playwright (handles client-side rendering).
+    Arc Beeston – try requests on both /kidsclub and /all pages.
+    Arc is client-side rendered so requests usually returns minimal HTML;
+    Playwright is used as fallback.
     """
     results = {'saturday': [], 'sunday': []}
-    url = 'https://beeston.arccinema.co.uk/whatson/all'
+    urls = [
+        'https://beeston.arccinema.co.uk/whatson/kidsclub',
+        'https://beeston.arccinema.co.uk/whatson/all',
+    ]
 
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
-        print(f"Arc Beeston (requests): HTTP {r.status_code}, {len(r.text)} bytes")
-        if r.status_code == 200:
-            _parse_arc(BeautifulSoup(r.text, 'html.parser'), saturday, sunday, results)
-    except Exception as e:
-        print(f"Arc requests error: {e}")
+    for url in urls:
+        if results['saturday'] or results['sunday']:
+            break
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=15)
+            print(f"Arc Beeston requests {url.split('/')[-1]}: HTTP {r.status_code}, {len(r.text)} bytes")
+            if r.status_code == 200:
+                _parse_arc(BeautifulSoup(r.text, 'html.parser'), saturday, sunday, results)
+        except Exception as e:
+            print(f"Arc requests error ({url}): {e}")
 
     if not results['saturday'] and not results['sunday']:
-        print("Arc Beeston: 0 results from requests — trying Playwright...")
-        html, _ = _playwright_fetch(url)
+        print("Arc Beeston: 0 results from requests — trying Playwright on kidsclub page...")
+        html, _ = _playwright_fetch('https://beeston.arccinema.co.uk/whatson/kidsclub')
         if html:
+            print(f"Arc Playwright HTML snippet: {html[:500]!r}")
             _parse_arc(BeautifulSoup(html, 'html.parser'), saturday, sunday, results)
 
     print(f"Arc Beeston: Sat={len(results['saturday'])}, Sun={len(results['sunday'])}")
@@ -214,7 +222,12 @@ def scrape_savoy(saturday, sunday):
             'https://savoyonline.co.uk/SavoyNottingham.dll/Page?p=6&m=mm&sp=0',
             headers=HEADERS, timeout=15
         )
+        print(f"Savoy HTTP {r.status_code}, {len(r.text)} bytes")
         soup = BeautifulSoup(r.text, 'html.parser')
+
+        # Log all headings found so we can debug structure changes
+        all_headings = [h.get_text(strip=True) for h in soup.find_all(['h2', 'h3', 'h4'])]
+        print(f"Savoy headings found: {all_headings[:20]}")
 
         sat_d    = saturday.strftime('%-d %b')
         sat_d2   = saturday.strftime('%d %b')
@@ -222,6 +235,7 @@ def scrape_savoy(saturday, sunday):
         sun_d    = sunday.strftime('%-d %b')
         sun_d2   = sunday.strftime('%d %b')
         sun_long = sunday.strftime('%A')
+        print(f"Savoy looking for dates: sat='{sat_d}'/'{sat_long}', sun='{sun_d}'/'{sun_long}'")
 
         NAV_EXACT = re.compile(
             r'^(coming soon|visit us?|gift vouchers?|loyalty(?: card)?|'
@@ -232,7 +246,7 @@ def scrape_savoy(saturday, sunday):
             re.I
         )
 
-        for heading in soup.find_all(['h3', 'h2']):
+        for heading in soup.find_all(['h2', 'h3', 'h4']):
             title = heading.get_text(strip=True)
             if not title or len(title) < 3 or NAV_EXACT.search(title):
                 continue
