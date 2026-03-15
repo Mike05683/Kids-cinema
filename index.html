@@ -446,6 +446,28 @@
     const container = document.getElementById('content');
     let html = '';
 
+    // Check if ALL cinemas have 0 showings for this day
+    const totalShowings = Object.keys(CINEMA_INFO).reduce((sum, key) => {
+      return sum + (allData.cinemas?.[key]?.[day]?.length || 0);
+    }, 0);
+
+    if (totalShowings === 0) {
+      const wd = allData.weekend_dates;
+      const label = wd ? `${wd.saturday} & ${wd.sunday}` : 'next weekend';
+      container.innerHTML = `
+        <div class="error-msg" style="background:#fff8e1;border-color:#ffe082;color:#5d4037">
+          <strong>No listings found yet for ${label}.</strong><br>
+          Cinemas usually post their Kids Club schedule mid-week.<br>
+          Check back Tuesday or Wednesday!
+          <br><br>
+          <a href="https://beeston.arccinema.co.uk/whatson/kidsclub" target="_blank" style="color:var(--teal)">Arc Beeston Kids Club</a> •
+          <a href="https://www.showcasecinemas.co.uk/family-favourites/" target="_blank" style="color:var(--teal)">Showcase Family Favourites</a> •
+          <a href="https://savoyonline.co.uk" target="_blank" style="color:var(--teal)">Savoy Nottingham</a> •
+          <a href="https://www.odeon.co.uk/cinemas/derby/161/" target="_blank" style="color:var(--teal)">Odeon Derby</a>
+        </div>`;
+      return;
+    }
+
     for (const [key, info] of Object.entries(CINEMA_INFO)) {
       const cinemaData = allData.cinemas?.[key];
       const showings = cinemaData?.[day] || [];
