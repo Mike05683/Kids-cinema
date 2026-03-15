@@ -640,8 +640,7 @@ def main():
 
     if total == 0:
         print("No showings found for any cinema — listings may not be live yet.")
-        print("Leaving existing JSON untouched.")
-        return
+        print("Writing empty JSON so Pages always rebuilds with a fresh timestamp.")
 
     output = {
         'updated': now.strftime('%a %d %b %Y at %H:%M UTC'),
