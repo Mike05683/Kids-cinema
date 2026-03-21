@@ -67,6 +67,41 @@ def get_weekend_dates():
 # Playwright helper
 # ---------------------------------------------------------------------------
 
+def _make_browser_context(playwright_instance):
+    """Create a headless Chromium browser + context with anti-bot settings."""
+    browser = playwright_instance.chromium.launch(
+        headless=True,
+        args=[
+            '--disable-blink-features=AutomationControlled',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
+        ],
+    )
+    ctx = browser.new_context(
+        user_agent=(
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/120.0.0.0 Safari/537.36'
+        ),
+        locale='en-GB',
+        viewport={'width': 1280, 'height': 800},
+        device_scale_factor=1,
+        extra_http_headers={
+            'Accept-Language': 'en-GB,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
+        },
+    )
+    ctx.add_init_script(
+        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    )
+    return browser, ctx
+
+
 def _playwright_fetch(url, timeout=30000):
     """
     Fetch a URL with headless Chromium, wait for JS to finish loading.
@@ -82,37 +117,7 @@ def _playwright_fetch(url, timeout=30000):
 
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                ],
-            )
-            ctx = browser.new_context(
-                user_agent=(
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                    'AppleWebKit/537.36 (KHTML, like Gecko) '
-                    'Chrome/120.0.0.0 Safari/537.36'
-                ),
-                locale='en-GB',
-                viewport={'width': 1280, 'height': 800},
-                device_scale_factor=1,
-                extra_http_headers={
-                    'Accept-Language': 'en-GB,en;q=0.9',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'sec-ch-ua': '"Chromium";v="120", "Google Chrome";v="120"',
-                    'sec-ch-ua-mobile': '?0',
-                    'sec-ch-ua-platform': '"Windows"',
-                },
-            )
-            # Mask navigator.webdriver
-            ctx.add_init_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
+            browser, ctx = _make_browser_context(p)
             page = ctx.new_page()
             try:
                 page.goto(url, wait_until='networkidle', timeout=timeout)
@@ -143,6 +148,65 @@ def _playwright_fetch(url, timeout=30000):
     except Exception as e:
         print(f"  Playwright error on {url}: {e}")
         return None, {}
+
+
+def _playwright_fetch_with_intercept(url, capture_patterns=None, timeout=35000):
+    """
+    Like _playwright_fetch but also captures JSON API responses made by the page.
+    capture_patterns: list of URL fragments; if None, captures all JSON responses.
+    Returns (html, next_data_dict, list_of_captured_json).
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return None, {}, []
+
+    captured = []
+
+    def _on_response(response):
+        ct = response.headers.get('content-type', '')
+        if 'application/json' not in ct:
+            return
+        if capture_patterns and not any(p in response.url for p in capture_patterns):
+            return
+        try:
+            body = response.body()
+            data = json.loads(body)
+            captured.append({'url': response.url, 'data': data})
+        except Exception:
+            pass
+
+    try:
+        with sync_playwright() as p:
+            browser, ctx = _make_browser_context(p)
+            page = ctx.new_page()
+            page.on('response', _on_response)
+            try:
+                page.goto(url, wait_until='networkidle', timeout=timeout)
+            except Exception:
+                try:
+                    page.goto(url, wait_until='domcontentloaded', timeout=timeout)
+                    page.wait_for_timeout(5000)
+                except Exception as inner:
+                    print(f"  Playwright+intercept goto failed for {url}: {inner}")
+                    browser.close()
+                    return None, {}, []
+
+            html = page.content()
+            try:
+                nd_str = page.evaluate('() => JSON.stringify(window.__NEXT_DATA__ || {})')
+                nd = json.loads(nd_str)
+            except Exception:
+                nd = {}
+
+            browser.close()
+            print(f"  Playwright+intercept OK: {url} — {len(html)} bytes, "
+                  f"{len(captured)} JSON responses captured")
+            return html, nd, captured
+
+    except Exception as e:
+        print(f"  Playwright+intercept error on {url}: {e}")
+        return None, {}, []
 
 
 # ---------------------------------------------------------------------------
@@ -230,9 +294,221 @@ def scrape_arc(saturday, sunday):
 # Savoy Nottingham
 # ---------------------------------------------------------------------------
 
+def _savoy_parse_soup(soup, saturday, sunday, results, label=''):
+    """
+    Core Savoy parsing logic. Mutates results dict.
+    Tries multiple strategies: heading-date scan → KC-marker scan →
+    iframe fetch → broad time extraction.
+    """
+    sat_d    = saturday.strftime('%-d %b')
+    sat_d2   = saturday.strftime('%d %b')
+    sat_long = saturday.strftime('%A')
+    sun_d    = sunday.strftime('%-d %b')
+    sun_d2   = sunday.strftime('%d %b')
+    sun_long = sunday.strftime('%A')
+    sat_abbr = saturday.strftime('%a ')
+    sun_abbr = sunday.strftime('%a ')
+    sat_iso  = saturday.strftime('%Y-%m-%d')
+    sun_iso  = sunday.strftime('%Y-%m-%d')
+
+    NAV_EXACT = re.compile(
+        r'^(coming soon|visit us?|gift vouchers?|loyalty(?: card)?|'
+        r'my basket|your basket|my account|your account|newsletter|'
+        r'login|log in|sign in|register|home|contact us?|'
+        r'silverscreen club|toddler (tuesday|club)|parent & baby|'
+        r'baby cinema|what\'s on|whats on|book (now|tickets))$',
+        re.I
+    )
+
+    # --- Strategy 1: Heading + date scan ---
+    for heading in soup.find_all(['h2', 'h3', 'h4']):
+        title = heading.get_text(strip=True)
+        if not title or len(title) < 3 or NAV_EXACT.search(title):
+            continue
+        section = (
+            heading.find_parent(['div', 'article', 'section', 'td', 'li'])
+            or heading.parent
+        )
+        section_text = section.get_text(separator='\n')
+        lines = [l.strip() for l in section_text.split('\n') if l.strip()]
+        current_day = None
+        for line in lines:
+            if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr]):
+                current_day = 'saturday'
+            elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
+                current_day = 'sunday'
+            if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
+                for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
+                    results[current_day].append(
+                        {'title': title, 'time': t, 'price': '£3.00'}
+                    )
+
+    if results['saturday'] or results['sunday']:
+        return
+
+    print(f"Savoy{label}: date-based heading scan found nothing — trying KC-marker search")
+
+    # --- Strategy 2: Look for elements tagged with "KC" marker ---
+    # Savoy marks Kids' Club slots with an orange "KC" label in the page.
+    # Search any element whose text contains "KC" and is near a time.
+    for el in soup.find_all(string=re.compile(r'\bKC\b')):
+        parent = el.parent if hasattr(el, 'parent') else None
+        if parent is None:
+            continue
+        # Walk up to find a container with a film title and time
+        for _ in range(6):
+            container = parent.find_parent(['div', 'td', 'li', 'article', 'section'])
+            if container is None:
+                break
+            ctext = container.get_text(separator='\n')
+            times = re.findall(r'\b(\d{1,2}:\d{2})\b', ctext)
+            if not times:
+                parent = container
+                continue
+            # Look for a title in the container
+            title_el = container.find(['h2', 'h3', 'h4', 'strong', 'b'])
+            title = title_el.get_text(strip=True) if title_el else "Kid's Club"
+            if not title or len(title) < 3:
+                title = "Kid's Club"
+            for t in times:
+                for day_key, d1, d2, dl in [
+                    ('saturday', sat_d, sat_d2, sat_long),
+                    ('sunday',   sun_d, sun_d2, sun_long),
+                ]:
+                    if d1 in ctext or d2 in ctext or dl in ctext:
+                        results[day_key].append({'title': title, 'time': t, 'price': '£3.00'})
+            # If no date labels, assume it's this weekend
+            if not any(
+                x in ctext for x in [sat_d, sat_d2, sat_long, sun_d, sun_d2, sun_long]
+            ):
+                for t in times:
+                    for day in ['saturday', 'sunday']:
+                        results[day].append({'title': title, 'time': t, 'price': '£3.00'})
+            break
+
+    if results['saturday'] or results['sunday']:
+        return
+
+    print(f"Savoy{label}: KC-marker search found nothing — trying Kids Club heading fallback")
+
+    # --- Strategy 3: Kids Club heading siblings (full text + iframe detection) ---
+    for heading in soup.find_all(['h2', 'h3', 'h4']):
+        if 'kid' not in heading.get_text(strip=True).lower():
+            continue
+
+        sibling_parts = []
+        iframe_srcs = []
+        for sib in heading.next_siblings:
+            if hasattr(sib, 'name') and sib.name in ['h1', 'h2']:
+                break
+            # Collect iframe src URLs to fetch separately
+            if hasattr(sib, 'name') and sib.name == 'iframe':
+                src = sib.get('src', '')
+                if src:
+                    iframe_srcs.append(src)
+            elif hasattr(sib, 'find_all'):
+                for ifr in sib.find_all('iframe'):
+                    src = ifr.get('src', '')
+                    if src:
+                        iframe_srcs.append(src)
+            sibling_parts.append(
+                sib.get_text(separator='\n') if hasattr(sib, 'get_text') else str(sib)
+            )
+        sibling_text = '\n'.join(sibling_parts)
+        print(f"Savoy{label} Kids Club sibling text (first 600 chars): {sibling_text[:600]!r}")
+        if iframe_srcs:
+            print(f"Savoy{label}: Found iframes in Kids Club section: {iframe_srcs}")
+
+        # Try to fetch iframe content
+        for iframe_src in iframe_srcs:
+            try:
+                ir = requests.get(iframe_src, headers=HEADERS, timeout=15)
+                if ir.status_code == 200 and len(ir.text) > 200:
+                    print(f"Savoy{label}: iframe {iframe_src}: {ir.status_code}, {len(ir.text)} bytes")
+                    iframe_soup = BeautifulSoup(ir.text, 'html.parser')
+                    iframe_text = iframe_soup.get_text(separator='\n')
+                    lines = [l.strip() for l in iframe_text.split('\n') if l.strip()]
+                    current_day = None
+                    for line in lines:
+                        if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr, sat_iso]):
+                            current_day = 'saturday'
+                        elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr, sun_iso]):
+                            current_day = 'sunday'
+                        if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
+                            for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
+                                results[current_day].append(
+                                    {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
+                                )
+            except Exception as e:
+                print(f"Savoy{label}: iframe fetch error ({iframe_src}): {e}")
+
+        if results['saturday'] or results['sunday']:
+            break
+
+        # Parse sibling text for date+time patterns
+        sib_soup = BeautifulSoup('\n'.join(
+            str(s) for s in heading.next_siblings
+            if not (hasattr(s, 'name') and s.name in ['h1', 'h2'])
+        ), 'html.parser')
+
+        lines = [l.strip() for l in sibling_text.split('\n') if l.strip()]
+        current_day = None
+        found_in_siblings = {'saturday': [], 'sunday': []}
+        for line in lines:
+            if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr]):
+                current_day = 'saturday'
+            elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
+                current_day = 'sunday'
+            if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
+                for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
+                    found_in_siblings[current_day].append(
+                        {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
+                    )
+
+        if found_in_siblings['saturday'] or found_in_siblings['sunday']:
+            results['saturday'].extend(found_in_siblings['saturday'])
+            results['sunday'].extend(found_in_siblings['sunday'])
+        else:
+            times_found = re.findall(r'\b(\d{1,2}:\d{2})\b', sibling_text)
+            if times_found:
+                print(f"Savoy{label}: no date labels, assuming times {times_found} are for this weekend")
+                for t in times_found:
+                    for day in ['saturday', 'sunday']:
+                        results[day].append({'title': "Kid's Club", 'time': t, 'price': '£3.00'})
+            # Also check sub-headings/bold as film titles
+            for sub in sib_soup.find_all(['h3', 'h4', 'strong', 'b']):
+                sub_title = sub.get_text(strip=True)
+                if not sub_title or len(sub_title) < 3:
+                    continue
+                sub_container_text = sub.parent.get_text(separator='\n') if sub.parent else ''
+                sub_times = re.findall(r'\b(\d{1,2}:\d{2})\b', sub_container_text)
+                for t in (sub_times or ['10:00']):
+                    for day in ['saturday', 'sunday']:
+                        results[day].append({'title': sub_title, 'time': t, 'price': '£3.00'})
+        break
+
+    # --- Strategy 4: Broad page scan — look for any table rows with times near date labels ---
+    if not results['saturday'] and not results['sunday']:
+        print(f"Savoy{label}: all heading-based strategies failed — broad table/list scan")
+        full_text = soup.get_text(separator='\n')
+        lines = [l.strip() for l in full_text.split('\n') if l.strip()]
+        current_day = None
+        for line in lines:
+            if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr]):
+                current_day = 'saturday'
+            elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
+                current_day = 'sunday'
+            if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
+                for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
+                    results[current_day].append(
+                        {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
+                    )
+
+
 def scrape_savoy(saturday, sunday):
     """
-    Savoy Nottingham kids club page — direct HTML scraping (server-rendered, working).
+    Savoy Nottingham kids club page — direct HTML scraping (server-rendered).
+    Falls back to Playwright if requests-based parsing finds nothing.
     """
     results = {'saturday': [], 'sunday': []}
     savoy_urls = [
@@ -254,117 +530,25 @@ def scrape_savoy(saturday, sunday):
         # Log all headings found so we can debug structure changes
         all_headings = [h.get_text(strip=True) for h in soup.find_all(['h2', 'h3', 'h4'])]
         print(f"Savoy headings found: {all_headings[:20]}")
-
         sat_d    = saturday.strftime('%-d %b')
-        sat_d2   = saturday.strftime('%d %b')
         sat_long = saturday.strftime('%A')
         sun_d    = sunday.strftime('%-d %b')
-        sun_d2   = sunday.strftime('%d %b')
         sun_long = sunday.strftime('%A')
         print(f"Savoy looking for dates: day1='{sat_d}'/'{sat_long}', day2='{sun_d}'/'{sun_long}'")
 
-        NAV_EXACT = re.compile(
-            r'^(coming soon|visit us?|gift vouchers?|loyalty(?: card)?|'
-            r'my basket|your basket|my account|your account|newsletter|'
-            r'login|log in|sign in|register|home|contact us?|'
-            r'silverscreen club|toddler (tuesday|club)|parent & baby|'
-            r'baby cinema|what\'s on|whats on|book (now|tickets))$',
-            re.I
-        )
+        _savoy_parse_soup(soup, saturday, sunday, results)
 
-        sat_abbr = saturday.strftime('%a ')
-        sun_abbr = sunday.strftime('%a ')
-
-        for heading in soup.find_all(['h2', 'h3', 'h4']):
-            title = heading.get_text(strip=True)
-            if not title or len(title) < 3 or NAV_EXACT.search(title):
-                continue
-
-            section = (
-                heading.find_parent(['div', 'article', 'section', 'td', 'li'])
-                or heading.parent
-            )
-            section_text = section.get_text(separator='\n')
-            lines = [l.strip() for l in section_text.split('\n') if l.strip()]
-
-            current_day = None
-            for line in lines:
-                if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr]):
-                    current_day = 'saturday'
-                elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
-                    current_day = 'sunday'
-
-                if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
-                    for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
-                        results[current_day].append(
-                            {'title': title, 'time': t, 'price': '£3.00'}
-                        )
-
-        # Fallback: Kids Club page often lists this week's showing without date labels.
-        # If nothing was found via date matching, scan the siblings that follow the
-        # "Kid's Club" heading and collect any film titles + times, assigning them
-        # to both weekend days (the page only ever shows the current weekend).
+        # Playwright fallback: if requests-based parsing found nothing, the page
+        # may be using JS to render the actual film listings.
         if not results['saturday'] and not results['sunday']:
-            print("Savoy: date-based parsing found nothing — trying Kids Club fallback scan")
-            for heading in soup.find_all(['h2', 'h3', 'h4']):
-                if 'kid' not in heading.get_text(strip=True).lower():
-                    continue
-                # Gather text from following siblings until next major heading
-                sibling_parts = []
-                for sib in heading.next_siblings:
-                    if hasattr(sib, 'name') and sib.name in ['h1', 'h2']:
+            print("Savoy: requests found nothing — trying Playwright fallback...")
+            for url in savoy_urls:
+                pw_html, _ = _playwright_fetch(url, timeout=30000)
+                if pw_html and len(pw_html) > 500:
+                    pw_soup = BeautifulSoup(pw_html, 'html.parser')
+                    _savoy_parse_soup(pw_soup, saturday, sunday, results, label=' (PW)')
+                    if results['saturday'] or results['sunday']:
                         break
-                    sibling_parts.append(sib.get_text(separator='\n') if hasattr(sib, 'get_text') else str(sib))
-                sibling_text = '\n'.join(sibling_parts)
-                print(f"Savoy Kids Club sibling text (first 600 chars): {sibling_text[:600]!r}")
-
-                # Find film sub-headings or bold elements within those siblings
-                sib_soup = BeautifulSoup('\n'.join(
-                    str(s) for s in heading.next_siblings
-                    if not (hasattr(s, 'name') and s.name in ['h1', 'h2'])
-                ), 'html.parser')
-
-                # Try date matching on the sibling block first
-                lines = [l.strip() for l in sibling_text.split('\n') if l.strip()]
-                current_day = None
-                found_in_siblings = {'saturday': [], 'sunday': []}
-                for line in lines:
-                    if any(x in line for x in [sat_d, sat_d2, sat_long, sat_abbr]):
-                        current_day = 'saturday'
-                    elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
-                        current_day = 'sunday'
-                    if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
-                        for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
-                            found_in_siblings[current_day].append(
-                                {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
-                            )
-
-                if found_in_siblings['saturday'] or found_in_siblings['sunday']:
-                    results['saturday'].extend(found_in_siblings['saturday'])
-                    results['sunday'].extend(found_in_siblings['sunday'])
-                else:
-                    # No date labels at all — assume every time listed is for the weekend
-                    times_found = re.findall(r'\b(\d{1,2}:\d{2})\b', sibling_text)
-                    if times_found:
-                        print(f"Savoy: no date labels found, assuming times {times_found} are for this weekend")
-                        for t in times_found:
-                            for day in ['saturday', 'sunday']:
-                                results[day].append(
-                                    {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
-                                )
-                    # Also look for sub-headings as film titles
-                    for sub in sib_soup.find_all(['h3', 'h4', 'strong', 'b']):
-                        sub_title = sub.get_text(strip=True)
-                        if not sub_title or len(sub_title) < 3:
-                            continue
-                        sub_container_text = sub.parent.get_text(separator='\n') if sub.parent else ''
-                        sub_times = re.findall(r'\b(\d{1,2}:\d{2})\b', sub_container_text)
-                        for t in (sub_times or ['10:00']):
-                            for day in ['saturday', 'sunday']:
-                                results[day].append(
-                                    {'title': sub_title, 'time': t, 'price': '£3.00'}
-                                )
-                break  # only process the first Kids Club heading
 
         for day in ['saturday', 'sunday']:
             seen = set()
@@ -522,7 +706,7 @@ def _parse_showcase_html(soup, key, saturday, sunday, results):
 def _try_showcase_api(saturday, sunday, results):
     """
     Attempt to pull showtime data from Showcase's Vue Cinema API.
-    These endpoints don't require JS and aren't behind Cloudflare.
+    Tries several known endpoint patterns (the exact URL has changed before).
     Site IDs: Nottingham=1054, Derby=1045
     """
     SITE_MAP = {
@@ -536,33 +720,46 @@ def _try_showcase_api(saturday, sunday, results):
         'Accept': 'application/json',
         'Referer': 'https://www.showcasecinemas.co.uk/',
     }
+    # Try multiple known API endpoint patterns
+    API_TEMPLATES = [
+        'https://www.showcasecinemas.co.uk/api/showtimes?siteId={site_id}&date={date}',
+        'https://www.showcasecinemas.co.uk/api/v1/showtimes?siteId={site_id}&date={date}',
+        'https://www.showcasecinemas.co.uk/api/v2/showtimes?siteId={site_id}&date={date}',
+        'https://www.showcasecinemas.co.uk/api/filmsonscreen?siteId={site_id}&date={date}',
+        'https://www.showcasecinemas.co.uk/api/schedule?siteId={site_id}&date={date}',
+    ]
     for key, site_id in SITE_MAP.items():
         for date_iso, day_key in [(sat_iso, 'saturday'), (sun_iso, 'sunday')]:
-            try:
-                url = (
-                    f'https://www.showcasecinemas.co.uk/api/showtimes'
-                    f'?siteId={site_id}&date={date_iso}'
-                )
-                r = requests.get(url, headers=api_headers, timeout=15)
-                print(f"Showcase API {key} {day_key}: HTTP {r.status_code}, {len(r.text)} bytes")
-                if r.status_code == 200:
-                    try:
-                        data = r.json()
-                        _walk_showcase_json(data, sat_iso, sun_iso, results, key)
-                    except Exception:
-                        pass
-            except Exception as e:
-                print(f"Showcase API error ({key}, {day_key}): {e}")
+            for tmpl in API_TEMPLATES:
+                url = tmpl.format(site_id=site_id, date=date_iso)
+                try:
+                    r = requests.get(url, headers=api_headers, timeout=10)
+                    print(f"Showcase API {key} {day_key} [{tmpl.split('/')[-1].split('?')[0]}]: "
+                          f"HTTP {r.status_code}, {len(r.text)} bytes")
+                    if r.status_code == 200:
+                        try:
+                            data = r.json()
+                            _walk_showcase_json(data, sat_iso, sun_iso, results, key)
+                        except Exception:
+                            pass
+                        break  # Don't try other templates if one succeeds
+                    elif r.status_code not in (404, 400):
+                        break  # Stop on unexpected errors
+                except Exception as e:
+                    print(f"Showcase API error ({key}, {day_key}): {e}")
+                    break
 
 
 def scrape_showcase(saturday, sunday):
     """
     Showcase Nottingham and Derby — Playwright primary (Next.js CSR site).
 
-    After full JS load we extract window.__NEXT_DATA__ via page.evaluate(),
-    which gives us the React page props (including film/session arrays) regardless
-    of how the component fetches them.  Rendered HTML is parsed as a secondary path.
-    SerpAPI is the final fallback if SERPAPI_KEY is set.
+    Strategy:
+    0. Direct API requests (multiple endpoint patterns)
+    1. Family Favourites landing pages via Playwright (HTML + __NEXT_DATA__)
+    2. Cinema-specific showtimes pages via Playwright WITH response interception
+       to capture the XHR/fetch calls the page makes for its data
+    3. SerpAPI fallback
     """
     results = {
         'showcase_nottingham': {'saturday': [], 'sunday': []},
@@ -575,17 +772,19 @@ def scrape_showcase(saturday, sunday):
     CINEMAS = {
         'showcase_nottingham': {
             'url':         'https://www.showcasecinemas.co.uk/showtimes/showcase-cinema-de-lux-nottingham',
+            'site_id':     '1054',
             'serp_query':  'Family Favourites Showcase Nottingham',
             'serp_filter': 'Showcase',
         },
         'showcase_derby': {
             'url':         'https://www.showcasecinemas.co.uk/showtimes/showcase-cinema-de-lux-derby',
+            'site_id':     '1045',
             'serp_query':  'Family Favourites Showcase Derby',
             'serp_filter': 'Showcase',
         },
     }
 
-    # 0. Try Showcase's internal API (Vue Cinema platform) via plain requests
+    # 0. Try Showcase's internal API via plain requests
     _try_showcase_api(saturday, sunday, results)
 
     # 1. Try Family Favourites landing pages via Playwright
@@ -594,7 +793,6 @@ def scrape_showcase(saturday, sunday):
         'https://www.showcasecinemas.co.uk/showcase-family/',
     ]:
         html, nd = _playwright_fetch(ff_url)
-        label = ff_url.rstrip('/').split('/')[-1]
         if nd and nd != {}:
             for key in results:
                 _walk_showcase_json(nd, sat_date, sun_date, results, key)
@@ -603,16 +801,39 @@ def scrape_showcase(saturday, sunday):
             for key in results:
                 _parse_showcase_html(soup, key, saturday, sunday, results)
 
-    # 2. Cinema-specific showtimes pages via Playwright for any still empty
+    # 2. Cinema-specific showtimes pages — use response interception to capture
+    #    the XHR/fetch calls the SPA makes to load its data.
     for key, cfg in CINEMAS.items():
         if results[key]['saturday'] or results[key]['sunday']:
             continue
-        html, nd = _playwright_fetch(cfg['url'])
+        html, nd, captured = _playwright_fetch_with_intercept(
+            cfg['url'],
+            capture_patterns=['api', 'showtimes', 'schedule', 'films', 'program'],
+        )
+        # Process any captured JSON API responses
+        if captured:
+            print(f"Showcase {key}: {len(captured)} API responses captured from page load")
+            for resp in captured:
+                _walk_showcase_json(resp['data'], sat_date, sun_date, results, key)
+        # Also walk __NEXT_DATA__ if present
         if nd and nd != {}:
             _walk_showcase_json(nd, sat_date, sun_date, results, key)
+        # Fall back to HTML parsing
         if html and not (results[key]['saturday'] or results[key]['sunday']):
             soup = BeautifulSoup(html, 'html.parser')
             _parse_showcase_html(soup, key, saturday, sunday, results)
+            # Also try to grab any captured API URL directly with requests
+            # (using the intercepted URLs but without browser cookies)
+            for resp in captured:
+                api_url = resp.get('url', '')
+                if api_url and not (results[key]['saturday'] or results[key]['sunday']):
+                    print(f"Showcase {key}: retrying captured API URL: {api_url[:100]}")
+                    try:
+                        r2 = requests.get(api_url, headers={**HEADERS, 'Accept': 'application/json'}, timeout=10)
+                        if r2.status_code == 200:
+                            _walk_showcase_json(r2.json(), sat_date, sun_date, results, key)
+                    except Exception:
+                        pass
 
     # 3. SerpAPI fallback
     if SERPAPI_KEY:
@@ -681,54 +902,109 @@ def _walk_odeon_json(obj, sat_iso, sun_iso, results):
             _walk_odeon_json(item, sat_iso, sun_iso, results)
 
 
+def _try_odeon_api(saturday, sunday, results):
+    """
+    Attempt to pull Odeon Kids showings from Odeon's internal REST API.
+    Derby cinema ID: 161
+    """
+    sat_iso = saturday.strftime('%Y-%m-%d')
+    sun_iso = sunday.strftime('%Y-%m-%d')
+    api_headers = {
+        **HEADERS,
+        'Accept': 'application/json',
+        'Referer': 'https://www.odeon.co.uk/',
+    }
+    # Known Odeon API endpoint patterns (cinema ID 161 = Derby)
+    API_URLS = [
+        f'https://vwc.odeon.co.uk/WSVistaWebClient/api/v1/showtimes/byCinema/161',
+        f'https://www.odeon.co.uk/api/showtimes?cinemaId=161&date={sat_iso}',
+        f'https://www.odeon.co.uk/api/v1/cinemas/161/films',
+        f'https://www.odeon.co.uk/api/v1/showtimes?siteId=161&date={sat_iso}',
+    ]
+    for url in API_URLS:
+        try:
+            r = requests.get(url, headers=api_headers, timeout=10)
+            print(f"Odeon API [{url.split('/')[-1].split('?')[0]}]: HTTP {r.status_code}, {len(r.text)} bytes")
+            if r.status_code == 200:
+                try:
+                    data = r.json()
+                    _walk_odeon_json(data, sat_iso, sun_iso, results)
+                    if results['saturday'] or results['sunday']:
+                        return
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"Odeon API error ({url}): {e}")
+
+
 def scrape_odeon_derby(saturday, sunday):
     """
-    Odeon Derby — Playwright primary (attempts to bypass Cloudflare bot protection
-    by presenting a real browser fingerprint).  SerpAPI fallback if still blocked.
+    Odeon Derby — multi-strategy approach:
+    0. Direct API requests (Odeon REST endpoints)
+    1. Playwright with response interception (captures XHR calls)
+    2. SerpAPI fallback
+    Logs a snippet of blocked responses to diagnose Cloudflare issues.
     """
     results = {'saturday': [], 'sunday': []}
     sat_date = saturday.strftime('%Y-%m-%d')
     sun_date = sunday.strftime('%Y-%m-%d')
 
-    URLS = [
-        'https://www.odeon.co.uk/films/odeon-kids/',
-        'https://www.odeon.co.uk/cinemas/derby/161/',
-    ]
+    # 0. Try Odeon's internal API directly
+    _try_odeon_api(saturday, sunday, results)
+    if results['saturday'] or results['sunday']:
+        print(f"Odeon Derby: API succeeded")
 
-    for url in URLS:
-        if results['saturday'] or results['sunday']:
-            break
-        html, nd = _playwright_fetch(url)
-        label = url.rstrip('/').split('/')[-2]
-        if not html:
-            print(f"Odeon Derby ({label}): Playwright blocked/failed")
-            continue
-        print(f"Odeon Derby ({label}): {len(html)} bytes")
+    # 1. Playwright with response interception
+    if not (results['saturday'] or results['sunday']):
+        URLS = [
+            'https://www.odeon.co.uk/films/odeon-kids/',
+            'https://www.odeon.co.uk/cinemas/derby/161/',
+        ]
+        for url in URLS:
+            if results['saturday'] or results['sunday']:
+                break
+            html, nd, captured = _playwright_fetch_with_intercept(
+                url,
+                capture_patterns=['api', 'showtimes', 'films', 'schedule', 'cinema'],
+                timeout=40000,
+            )
+            label = url.rstrip('/').split('/')[-2]
+            if not html:
+                print(f"Odeon Derby ({label}): Playwright blocked/failed")
+                continue
+            print(f"Odeon Derby ({label}): {len(html)} bytes, {len(captured)} JSON responses")
+            # Log snippet to diagnose if Cloudflare is blocking
+            if len(html) < 10000:
+                soup_check = BeautifulSoup(html, 'html.parser')
+                print(f"Odeon Derby ({label}) page snippet: {soup_check.get_text()[:300]!r}")
 
-        if nd and nd != {}:
-            _walk_odeon_json(nd, sat_date, sun_date, results)
+            # Process captured API responses first
+            for resp in captured:
+                _walk_odeon_json(resp['data'], sat_date, sun_date, results)
 
-        if not (results['saturday'] or results['sunday']):
-            soup = BeautifulSoup(html, 'html.parser')
-            # JSON-LD
-            for ld_script in soup.find_all('script', type='application/ld+json'):
-                try:
-                    ld = json.loads(ld_script.string or '')
-                    for item in (ld if isinstance(ld, list) else [ld]):
-                        title = item.get('name', '')
-                        start = str(item.get('startDate', ''))
-                        m = re.search(r'T(\d{2}:\d{2})', start)
-                        if title and m:
-                            for day_key, d_iso in [('saturday', sat_date), ('sunday', sun_date)]:
-                                if d_iso in start:
-                                    results[day_key].append(
-                                        {'title': title, 'time': m.group(1),
-                                         'price': 'Odeon Kids pricing'}
-                                    )
-                except Exception:
-                    pass
+            if nd and nd != {}:
+                _walk_odeon_json(nd, sat_date, sun_date, results)
 
-    # SerpAPI fallback
+            if not (results['saturday'] or results['sunday']):
+                soup = BeautifulSoup(html, 'html.parser')
+                for ld_script in soup.find_all('script', type='application/ld+json'):
+                    try:
+                        ld = json.loads(ld_script.string or '')
+                        for item in (ld if isinstance(ld, list) else [ld]):
+                            title = item.get('name', '')
+                            start = str(item.get('startDate', ''))
+                            m = re.search(r'T(\d{2}:\d{2})', start)
+                            if title and m:
+                                for day_key, d_iso in [('saturday', sat_date), ('sunday', sun_date)]:
+                                    if d_iso in start:
+                                        results[day_key].append(
+                                            {'title': title, 'time': m.group(1),
+                                             'price': 'Odeon Kids pricing'}
+                                        )
+                    except Exception:
+                        pass
+
+    # 2. SerpAPI fallback
     if SERPAPI_KEY and not (results['saturday'] or results['sunday']):
         print("Odeon Derby: trying SerpAPI fallback...")
         serp = _serpapi_showtimes(
