@@ -99,7 +99,27 @@ def _make_browser_context(playwright_instance):
     ctx.add_init_script(
         "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
     )
+
+    # playwright-stealth patches away dozens of headless-browser fingerprinting
+    # tells (missing plugins, incorrect permissions API, etc.) that Cloudflare
+    # uses to block bots.  We check for the package here so a missing install
+    # is surfaced early, but stealth is applied per-page (see _apply_stealth).
+    try:
+        import playwright_stealth  # noqa: F401 — just verify it's installed
+    except ImportError:
+        print("  WARNING: playwright-stealth not installed — Cloudflare bypass disabled. "
+              "Run: pip install playwright-stealth")
+
     return browser, ctx
+
+
+def _apply_stealth(page):
+    """Apply playwright-stealth to a page if the package is available."""
+    try:
+        from playwright_stealth import stealth_sync
+        stealth_sync(page)
+    except ImportError:
+        pass  # warning already printed by _make_browser_context
 
 
 def _playwright_fetch(url, timeout=30000):
@@ -119,6 +139,7 @@ def _playwright_fetch(url, timeout=30000):
         with sync_playwright() as p:
             browser, ctx = _make_browser_context(p)
             page = ctx.new_page()
+            _apply_stealth(page)
             try:
                 page.goto(url, wait_until='networkidle', timeout=timeout)
             except Exception:
@@ -180,6 +201,7 @@ def _playwright_fetch_with_intercept(url, capture_patterns=None, timeout=35000):
         with sync_playwright() as p:
             browser, ctx = _make_browser_context(p)
             page = ctx.new_page()
+            _apply_stealth(page)
             page.on('response', _on_response)
             try:
                 page.goto(url, wait_until='networkidle', timeout=timeout)
