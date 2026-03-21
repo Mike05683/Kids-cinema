@@ -320,6 +320,51 @@ def _savoy_parse_soup(soup, saturday, sunday, results, label=''):
         re.I
     )
 
+    # --- Strategy 0: Parse var Events = {...} JavaScript object in <script> tags ---
+    # Savoy embeds the full session list as a JS variable on both pages.
+    for script in soup.find_all('script'):
+        script_text = script.get_text()
+        m = re.search(r'var\s+Events\s*=\s*(\{.*?\})\s*;', script_text, re.DOTALL)
+        if not m:
+            continue
+        try:
+            events_obj = json.loads(m.group(1))
+        except Exception:
+            continue
+        events = events_obj.get('Events') or events_obj.get('events') or []
+        if not events:
+            continue
+        # Debug: show first event keys so we know the structure
+        if events:
+            print(f"Savoy{label}: var Events found, {len(events)} events, "
+                  f"first keys={list(events[0].keys())[:10]}")
+        for ev in events:
+            title = str(ev.get('Title') or ev.get('title') or ev.get('Name') or
+                        ev.get('Film') or ev.get('FilmTitle') or "Kid's Club")
+            # Date field — try multiple key names
+            date_val = str(ev.get('Date') or ev.get('ShowDate') or ev.get('EventDate')
+                           or ev.get('PerformanceDate') or ev.get('StartDate')
+                           or ev.get('start') or ev.get('StartDateTime') or '')
+            # Time field
+            time_val = str(ev.get('Time') or ev.get('ShowTime') or ev.get('StartTime')
+                           or ev.get('PerformanceTime') or ev.get('start') or '')
+            # Match to our target dates
+            day_key = None
+            if sat_iso in date_val or sat_d in date_val or sat_long in date_val:
+                day_key = 'saturday'
+            elif sun_iso in date_val or sun_d in date_val or sun_long in date_val:
+                day_key = 'sunday'
+            if not day_key:
+                continue
+            # Extract HH:MM time
+            t = re.search(r'\b(\d{1,2}:\d{2})\b', time_val or date_val)
+            time_str = t.group(1) if t else '10:00'
+            results[day_key].append({'title': title, 'time': time_str, 'price': '£3.00'})
+        if results['saturday'] or results['sunday']:
+            print(f"Savoy{label}: var Events strategy: "
+                  f"Sat={len(results['saturday'])}, Sun={len(results['sunday'])}")
+            return
+
     # --- Strategy 1: Heading + date scan ---
     for heading in soup.find_all(['h2', 'h3', 'h4']):
         title = heading.get_text(strip=True)
@@ -774,52 +819,48 @@ def _parse_showcase_captured(captured_list, sat_iso, sun_iso, results, restrict_
     print(f"Showcase {restrict_key}: built movies dict with {len(movies_by_id)} entries")
 
     # Process schedule responses
+    # Structure: data[theater_id] = {"schedule": {movieId: {date: [{startsAt, ...}]}}}
     for resp in captured_list:
         data = resp['data']
         if not isinstance(data, dict) or theater_id not in data:
             continue
-        schedule = data[theater_id]
-        # Debug: dump first 400 chars of schedule value
-        print(f"Showcase {restrict_key}: schedule[{theater_id}] snippet: "
-              f"{json.dumps(schedule)[:400]}")
-        # Schedule can be dict{date: [sessions]} or list of sessions
-        date_map = {}  # date_iso -> list of session dicts
-        if isinstance(schedule, dict):
-            date_map = schedule  # e.g. {"2026-03-21": [...sessions...]}
-        elif isinstance(schedule, list):
-            for s in schedule:
-                if isinstance(s, dict):
-                    d = str(s.get('date') or s.get('sessionDate') or s.get('startTime') or '')[:10]
-                    date_map.setdefault(d, []).append(s)
-
-        for date_iso, sessions in date_map.items():
-            day_key = None
-            if sat_iso in date_iso:
-                day_key = 'saturday'
-            elif sun_iso in date_iso:
-                day_key = 'sunday'
-            if not day_key:
+        theater_data = data[theater_id]
+        # Unwrap inner "schedule" key if present
+        movie_schedule = (theater_data.get('schedule') if isinstance(theater_data, dict)
+                          else None) or theater_data
+        if not isinstance(movie_schedule, dict):
+            continue
+        found_this_resp = 0
+        for movie_id, date_map in movie_schedule.items():
+            title = movies_by_id.get(str(movie_id), '')
+            if not isinstance(date_map, dict):
                 continue
-            if not isinstance(sessions, list):
-                continue
-            for s in sessions:
-                if not isinstance(s, dict):
+            for date_key, sessions in date_map.items():
+                day_key = None
+                if sat_iso in date_key:
+                    day_key = 'saturday'
+                elif sun_iso in date_key:
+                    day_key = 'sunday'
+                if not day_key or not isinstance(sessions, list):
                     continue
-                # Get film title: prefer lookup, fall back to inline keys
-                film_id = str(s.get('filmId') or s.get('movieId') or s.get('movie') or
-                              s.get('film') or s.get('id') or '')
-                title = (movies_by_id.get(film_id) or
-                         str(s.get('title') or s.get('filmTitle') or s.get('name') or
-                             s.get('movieTitle') or ''))
-                if not title:
-                    continue
-                start = str(s.get('startTime') or s.get('time') or s.get('sessionTime')
-                            or s.get('dateTime') or '')
-                m = re.search(r'T?(\d{1,2}:\d{2})', start)
-                time_str = m.group(1) if m else '10:00'
-                results[restrict_key][day_key].append(
-                    {'title': title, 'time': time_str, 'price': '£2.49'}
-                )
+                for s in sessions:
+                    if not isinstance(s, dict):
+                        continue
+                    # Use title from movies dict, fall back to inline field
+                    t = (title or
+                         str(s.get('title') or s.get('filmTitle') or s.get('name') or ''))
+                    if not t:
+                        continue
+                    starts_at = str(s.get('startsAt') or s.get('startTime') or
+                                    s.get('time') or s.get('dateTime') or '')
+                    mt = re.search(r'T(\d{1,2}:\d{2})', starts_at)
+                    time_str = mt.group(1) if mt else '10:00'
+                    results[restrict_key][day_key].append(
+                        {'title': t, 'time': time_str, 'price': '£2.49'}
+                    )
+                    found_this_resp += 1
+        if found_this_resp:
+            print(f"Showcase {restrict_key}: schedule response yielded {found_this_resp} sessions")
 
 
 def scrape_showcase(saturday, sunday):
