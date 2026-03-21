@@ -198,8 +198,8 @@ def scrape_arc(saturday, sunday):
             print(f"Arc requests error ({url}): {e}")
 
     if not results['saturday'] and not results['sunday']:
-        print("Arc Beeston: 0 results from requests — trying Playwright on kidsclub page...")
-        html, _ = _playwright_fetch('https://beeston.arccinema.co.uk/whatson/kidsclub')
+        print("Arc Beeston: 0 results from requests — trying Playwright on /whatson/all...")
+        html, _ = _playwright_fetch('https://beeston.arccinema.co.uk/whatson/all')
         if html:
             print(f"Arc Playwright HTML snippet: {html[:500]!r}")
             _parse_arc(BeautifulSoup(html, 'html.parser'), saturday, sunday, results)
@@ -217,13 +217,21 @@ def scrape_savoy(saturday, sunday):
     Savoy Nottingham kids club page — direct HTML scraping (server-rendered, working).
     """
     results = {'saturday': [], 'sunday': []}
+    savoy_urls = [
+        'https://savoyonline.co.uk/SavoyNottingham.dll/Page?p=6&m=mm&sp=0',
+        'https://savoyonline.co.uk/SavoyNottingham.dll/WhatsOn',
+    ]
     try:
-        r = requests.get(
-            'https://savoyonline.co.uk/SavoyNottingham.dll/Page?p=6&m=mm&sp=0',
-            headers=HEADERS, timeout=15
-        )
-        print(f"Savoy HTTP {r.status_code}, {len(r.text)} bytes")
-        soup = BeautifulSoup(r.text, 'html.parser')
+        soup = None
+        for url in savoy_urls:
+            r = requests.get(url, headers=HEADERS, timeout=15)
+            print(f"Savoy {url.split('/')[-1]}: HTTP {r.status_code}, {len(r.text)} bytes")
+            if r.status_code == 200 and len(r.text) > 500:
+                soup = BeautifulSoup(r.text, 'html.parser')
+                break
+        if soup is None:
+            print("Savoy: all URLs failed")
+            return results
 
         # Log all headings found so we can debug structure changes
         all_headings = [h.get_text(strip=True) for h in soup.find_all(['h2', 'h3', 'h4'])]
@@ -235,7 +243,7 @@ def scrape_savoy(saturday, sunday):
         sun_d    = sunday.strftime('%-d %b')
         sun_d2   = sunday.strftime('%d %b')
         sun_long = sunday.strftime('%A')
-        print(f"Savoy looking for dates: sat='{sat_d}'/'{sat_long}', sun='{sun_d}'/'{sun_long}'")
+        print(f"Savoy looking for dates: day1='{sat_d}'/'{sat_long}', day2='{sun_d}'/'{sun_long}'")
 
         NAV_EXACT = re.compile(
             r'^(coming soon|visit us?|gift vouchers?|loyalty(?: card)?|'
