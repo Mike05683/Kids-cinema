@@ -487,9 +487,9 @@ def _savoy_parse_soup(soup, saturday, sunday, results, label=''):
                         results[day].append({'title': sub_title, 'time': t, 'price': '£3.00'})
         break
 
-    # --- Strategy 4: Broad page scan — look for any table rows with times near date labels ---
+    # --- Strategy 4: Broad page scan — only lines that also contain 'KC' (Kids Club marker) ---
     if not results['saturday'] and not results['sunday']:
-        print(f"Savoy{label}: all heading-based strategies failed — broad table/list scan")
+        print(f"Savoy{label}: all heading-based strategies failed — KC-filtered broad scan")
         full_text = soup.get_text(separator='\n')
         lines = [l.strip() for l in full_text.split('\n') if l.strip()]
         current_day = None
@@ -498,7 +498,8 @@ def _savoy_parse_soup(soup, saturday, sunday, results, label=''):
                 current_day = 'saturday'
             elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
                 current_day = 'sunday'
-            if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
+            # Only record times if this line also has a KC marker (Kids Club indicator)
+            if current_day and re.search(r'\bKC\b', line) and re.search(r'\b\d{1,2}:\d{2}\b', line):
                 for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
                     results[current_day].append(
                         {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
@@ -538,17 +539,14 @@ def scrape_savoy(saturday, sunday):
 
         _savoy_parse_soup(soup, saturday, sunday, results)
 
-        # Playwright fallback: if requests-based parsing found nothing, the page
-        # may be using JS to render the actual film listings.
+        # Playwright fallback: only try Kids Club page (not WhatsOn — it has all shows)
         if not results['saturday'] and not results['sunday']:
-            print("Savoy: requests found nothing — trying Playwright fallback...")
-            for url in savoy_urls:
-                pw_html, _ = _playwright_fetch(url, timeout=30000)
-                if pw_html and len(pw_html) > 500:
-                    pw_soup = BeautifulSoup(pw_html, 'html.parser')
-                    _savoy_parse_soup(pw_soup, saturday, sunday, results, label=' (PW)')
-                    if results['saturday'] or results['sunday']:
-                        break
+            print("Savoy: requests found nothing — trying Playwright on Kids Club page only...")
+            pw_html, _ = _playwright_fetch(savoy_urls[0], timeout=30000)
+            if pw_html and len(pw_html) > 500:
+                print(f"Savoy PW Kids Club: {len(pw_html)} bytes")
+                pw_soup = BeautifulSoup(pw_html, 'html.parser')
+                _savoy_parse_soup(pw_soup, saturday, sunday, results, label=' (PW)')
 
         for day in ['saturday', 'sunday']:
             seen = set()
@@ -750,6 +748,47 @@ def _try_showcase_api(saturday, sunday, results):
                     break
 
 
+def _parse_gatsby_response(data, sat_iso, sun_iso, results, restrict_key):
+    """
+    Parse Gatsby Box Office API responses (gatsby-source-boxofficeapi format).
+    These typically use camelCase keys like movieTitle, sessionDate, sessionTime.
+    Also handles cms-assets page-data bundles.
+    """
+    def _extract(obj):
+        if isinstance(obj, dict):
+            # Box Office API scheduledMovies format
+            title = (obj.get('movieTitle') or obj.get('title') or obj.get('name')
+                     or obj.get('filmTitle') or obj.get('film') or '')
+            # Look for session arrays under various keys
+            sessions_raw = (
+                obj.get('sessions') or obj.get('schedule') or obj.get('screenings')
+                or obj.get('showings') or obj.get('performances') or obj.get('times') or []
+            )
+            if title and isinstance(sessions_raw, list) and sessions_raw:
+                for s in sessions_raw:
+                    if not isinstance(s, dict):
+                        continue
+                    date_val = str(s.get('sessionDate') or s.get('date') or
+                                   s.get('startDate') or s.get('dateTime') or
+                                   s.get('startTime') or s.get('showDate') or '')
+                    time_val = str(s.get('sessionTime') or s.get('time') or
+                                   s.get('startTime') or s.get('showTime') or '')
+                    # Parse time from HH:MM or ISO
+                    m = re.search(r'T?(\d{1,2}:\d{2})', time_val or date_val)
+                    time_str = m.group(1) if m else '10:00'
+                    for day_key, d_iso in [('saturday', sat_iso), ('sunday', sun_iso)]:
+                        if d_iso in date_val or d_iso in time_val:
+                            results[restrict_key][day_key].append(
+                                {'title': str(title), 'time': time_str, 'price': '£2.49'}
+                            )
+            for v in obj.values():
+                _extract(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _extract(item)
+    _extract(data)
+
+
 def scrape_showcase(saturday, sunday):
     """
     Showcase Nottingham and Derby — Playwright primary (Next.js CSR site).
@@ -814,7 +853,16 @@ def scrape_showcase(saturday, sunday):
         if captured:
             print(f"Showcase {key}: {len(captured)} API responses captured from page load")
             for resp in captured:
-                _walk_showcase_json(resp['data'], sat_date, sun_date, results, key)
+                resp_url = resp.get('url', '')
+                data = resp['data']
+                # Debug: show structure of each captured response
+                if isinstance(data, dict):
+                    top_keys = list(data.keys())[:8]
+                    print(f"  captured dict keys={top_keys} url={resp_url[:80]}")
+                elif isinstance(data, list):
+                    print(f"  captured list len={len(data)}, first_keys={list(data[0].keys())[:8] if data and isinstance(data[0], dict) else '?'} url={resp_url[:80]}")
+                _walk_showcase_json(data, sat_date, sun_date, results, key)
+                _parse_gatsby_response(data, sat_date, sun_date, results, key)
         # Also walk __NEXT_DATA__ if present
         if nd and nd != {}:
             _walk_showcase_json(nd, sat_date, sun_date, results, key)
@@ -822,18 +870,6 @@ def scrape_showcase(saturday, sunday):
         if html and not (results[key]['saturday'] or results[key]['sunday']):
             soup = BeautifulSoup(html, 'html.parser')
             _parse_showcase_html(soup, key, saturday, sunday, results)
-            # Also try to grab any captured API URL directly with requests
-            # (using the intercepted URLs but without browser cookies)
-            for resp in captured:
-                api_url = resp.get('url', '')
-                if api_url and not (results[key]['saturday'] or results[key]['sunday']):
-                    print(f"Showcase {key}: retrying captured API URL: {api_url[:100]}")
-                    try:
-                        r2 = requests.get(api_url, headers={**HEADERS, 'Accept': 'application/json'}, timeout=10)
-                        if r2.status_code == 200:
-                            _walk_showcase_json(r2.json(), sat_date, sun_date, results, key)
-                    except Exception:
-                        pass
 
     # 3. SerpAPI fallback
     if SERPAPI_KEY:
