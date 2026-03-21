@@ -487,9 +487,12 @@ def _savoy_parse_soup(soup, saturday, sunday, results, label=''):
                         results[day].append({'title': sub_title, 'time': t, 'price': '£3.00'})
         break
 
-    # --- Strategy 4: Broad page scan — only lines that also contain 'KC' (Kids Club marker) ---
+    # --- Strategy 4: Broad page scan (Kids Club page only — all times are KC) ---
+    # Debug: show elements containing HH:MM times to understand page structure
     if not results['saturday'] and not results['sunday']:
-        print(f"Savoy{label}: all heading-based strategies failed — KC-filtered broad scan")
+        time_els = [el for el in soup.find_all(string=re.compile(r'\b\d{1,2}:\d{2}\b'))
+                    if el.strip()][:10]
+        print(f"Savoy{label}: Strategy 4 — time-bearing strings: {[str(x)[:60] for x in time_els]}")
         full_text = soup.get_text(separator='\n')
         lines = [l.strip() for l in full_text.split('\n') if l.strip()]
         current_day = None
@@ -498,8 +501,8 @@ def _savoy_parse_soup(soup, saturday, sunday, results, label=''):
                 current_day = 'saturday'
             elif any(x in line for x in [sun_d, sun_d2, sun_long, sun_abbr]):
                 current_day = 'sunday'
-            # Only record times if this line also has a KC marker (Kids Club indicator)
-            if current_day and re.search(r'\bKC\b', line) and re.search(r'\b\d{1,2}:\d{2}\b', line):
+            # We're always on the Kids Club page so all times are Kids Club
+            if current_day and re.search(r'\b\d{1,2}:\d{2}\b', line):
                 for t in re.findall(r'\b(\d{1,2}:\d{2})\b', line):
                     results[current_day].append(
                         {'title': "Kid's Club", 'time': t, 'price': '£3.00'}
@@ -748,45 +751,75 @@ def _try_showcase_api(saturday, sunday, results):
                     break
 
 
-def _parse_gatsby_response(data, sat_iso, sun_iso, results, restrict_key):
+def _parse_showcase_captured(captured_list, sat_iso, sun_iso, results, restrict_key, theater_id):
     """
-    Parse Gatsby Box Office API responses (gatsby-source-boxofficeapi format).
-    These typically use camelCase keys like movieTitle, sessionDate, sessionTime.
-    Also handles cms-assets page-data bundles.
+    Cross-reference Gatsby Box Office API responses for a single theater.
+
+    Responses come in three flavours:
+      • schedule   → {theaterID: {date: [{id, filmId/movieId, startTime, ...}, ...]}}
+      • movies     → [{id, title, ...}, ...]
+      • scheduledMovies → {movieIds: [...], scheduledDays: [...]}   (ignored here)
     """
-    def _extract(obj):
-        if isinstance(obj, dict):
-            # Box Office API scheduledMovies format
-            title = (obj.get('movieTitle') or obj.get('title') or obj.get('name')
-                     or obj.get('filmTitle') or obj.get('film') or '')
-            # Look for session arrays under various keys
-            sessions_raw = (
-                obj.get('sessions') or obj.get('schedule') or obj.get('screenings')
-                or obj.get('showings') or obj.get('performances') or obj.get('times') or []
-            )
-            if title and isinstance(sessions_raw, list) and sessions_raw:
-                for s in sessions_raw:
-                    if not isinstance(s, dict):
-                        continue
-                    date_val = str(s.get('sessionDate') or s.get('date') or
-                                   s.get('startDate') or s.get('dateTime') or
-                                   s.get('startTime') or s.get('showDate') or '')
-                    time_val = str(s.get('sessionTime') or s.get('time') or
-                                   s.get('startTime') or s.get('showTime') or '')
-                    # Parse time from HH:MM or ISO
-                    m = re.search(r'T?(\d{1,2}:\d{2})', time_val or date_val)
-                    time_str = m.group(1) if m else '10:00'
-                    for day_key, d_iso in [('saturday', sat_iso), ('sunday', sun_iso)]:
-                        if d_iso in date_val or d_iso in time_val:
-                            results[restrict_key][day_key].append(
-                                {'title': str(title), 'time': time_str, 'price': '£2.49'}
-                            )
-            for v in obj.values():
-                _extract(v)
-        elif isinstance(obj, list):
-            for item in obj:
-                _extract(item)
-    _extract(data)
+    # Build movie id→title lookup from all movies responses
+    movies_by_id = {}
+    for resp in captured_list:
+        data = resp['data']
+        if isinstance(data, list) and data and isinstance(data[0], dict):
+            if 'title' in data[0] and 'id' in data[0]:
+                for m in data:
+                    mid = str(m.get('id') or m.get('altId') or '')
+                    title = str(m.get('title') or '')
+                    if mid and title:
+                        movies_by_id[mid] = title
+    print(f"Showcase {restrict_key}: built movies dict with {len(movies_by_id)} entries")
+
+    # Process schedule responses
+    for resp in captured_list:
+        data = resp['data']
+        if not isinstance(data, dict) or theater_id not in data:
+            continue
+        schedule = data[theater_id]
+        # Debug: dump first 400 chars of schedule value
+        print(f"Showcase {restrict_key}: schedule[{theater_id}] snippet: "
+              f"{json.dumps(schedule)[:400]}")
+        # Schedule can be dict{date: [sessions]} or list of sessions
+        date_map = {}  # date_iso -> list of session dicts
+        if isinstance(schedule, dict):
+            date_map = schedule  # e.g. {"2026-03-21": [...sessions...]}
+        elif isinstance(schedule, list):
+            for s in schedule:
+                if isinstance(s, dict):
+                    d = str(s.get('date') or s.get('sessionDate') or s.get('startTime') or '')[:10]
+                    date_map.setdefault(d, []).append(s)
+
+        for date_iso, sessions in date_map.items():
+            day_key = None
+            if sat_iso in date_iso:
+                day_key = 'saturday'
+            elif sun_iso in date_iso:
+                day_key = 'sunday'
+            if not day_key:
+                continue
+            if not isinstance(sessions, list):
+                continue
+            for s in sessions:
+                if not isinstance(s, dict):
+                    continue
+                # Get film title: prefer lookup, fall back to inline keys
+                film_id = str(s.get('filmId') or s.get('movieId') or s.get('movie') or
+                              s.get('film') or s.get('id') or '')
+                title = (movies_by_id.get(film_id) or
+                         str(s.get('title') or s.get('filmTitle') or s.get('name') or
+                             s.get('movieTitle') or ''))
+                if not title:
+                    continue
+                start = str(s.get('startTime') or s.get('time') or s.get('sessionTime')
+                            or s.get('dateTime') or '')
+                m = re.search(r'T?(\d{1,2}:\d{2})', start)
+                time_str = m.group(1) if m else '10:00'
+                results[restrict_key][day_key].append(
+                    {'title': title, 'time': time_str, 'price': '£2.49'}
+                )
 
 
 def scrape_showcase(saturday, sunday):
@@ -812,12 +845,14 @@ def scrape_showcase(saturday, sunday):
         'showcase_nottingham': {
             'url':         'https://www.showcasecinemas.co.uk/showtimes/showcase-cinema-de-lux-nottingham',
             'site_id':     '1054',
+            'theater_id':  'X06JN',
             'serp_query':  'Family Favourites Showcase Nottingham',
             'serp_filter': 'Showcase',
         },
         'showcase_derby': {
             'url':         'https://www.showcasecinemas.co.uk/showtimes/showcase-cinema-de-lux-derby',
             'site_id':     '1045',
+            'theater_id':  'X08EM',
             'serp_query':  'Family Favourites Showcase Derby',
             'serp_filter': 'Showcase',
         },
@@ -847,22 +882,16 @@ def scrape_showcase(saturday, sunday):
             continue
         html, nd, captured = _playwright_fetch_with_intercept(
             cfg['url'],
-            capture_patterns=['api', 'showtimes', 'schedule', 'films', 'program'],
+            capture_patterns=['api', 'showtimes', 'schedule', 'films', 'program', 'cms-assets'],
         )
-        # Process any captured JSON API responses
+        # Cross-reference captured movies + schedule responses
         if captured:
             print(f"Showcase {key}: {len(captured)} API responses captured from page load")
-            for resp in captured:
-                resp_url = resp.get('url', '')
-                data = resp['data']
-                # Debug: show structure of each captured response
-                if isinstance(data, dict):
-                    top_keys = list(data.keys())[:8]
-                    print(f"  captured dict keys={top_keys} url={resp_url[:80]}")
-                elif isinstance(data, list):
-                    print(f"  captured list len={len(data)}, first_keys={list(data[0].keys())[:8] if data and isinstance(data[0], dict) else '?'} url={resp_url[:80]}")
-                _walk_showcase_json(data, sat_date, sun_date, results, key)
-                _parse_gatsby_response(data, sat_date, sun_date, results, key)
+            _parse_showcase_captured(captured, sat_date, sun_date, results, key, cfg['theater_id'])
+            # Also try generic walker as fallback
+            if not (results[key]['saturday'] or results[key]['sunday']):
+                for resp in captured:
+                    _walk_showcase_json(resp['data'], sat_date, sun_date, results, key)
         # Also walk __NEXT_DATA__ if present
         if nd and nd != {}:
             _walk_showcase_json(nd, sat_date, sun_date, results, key)
