@@ -38,18 +38,29 @@ SERPAPI_KEY = os.environ.get('SERPAPI_KEY')
 
 def get_weekend_dates():
     """
-    TEMP (troubleshooting): returns this Tuesday and Wednesday so we can
-    verify scraping against dates that definitely have cinema listings.
-    Revert to Sat/Sun logic once confirmed working.
+    Returns the upcoming Saturday and Sunday (midnight-normalised, UTC).
+    - Sat / Sun before 13:05 UTC  -> this weekend
+    - Sun at/after 13:05 UTC      -> next weekend
+    - Mon–Fri                     -> next weekend
     """
     now = datetime.utcnow()
-    days_to_tuesday = (1 - now.weekday()) % 7
-    if days_to_tuesday == 0:
-        days_to_tuesday = 7  # if today is already Tuesday, use next week's
-    tuesday = (now + timedelta(days=days_to_tuesday)).replace(
-        hour=0, minute=0, second=0, microsecond=0)
-    wednesday = tuesday + timedelta(days=1)
-    return tuesday, wednesday
+    weekday = now.weekday()  # 0=Mon … 5=Sat, 6=Sun
+
+    if weekday == 5:  # Saturday
+        saturday = now
+    elif weekday == 6:  # Sunday
+        after_105pm = now.hour > 13 or (now.hour == 13 and now.minute >= 5)
+        if after_105pm:
+            saturday = now + timedelta(days=6)   # next Saturday
+        else:
+            saturday = now - timedelta(days=1)   # this Saturday
+    else:  # Mon–Fri: find next Saturday
+        days_ahead = (5 - weekday) % 7
+        saturday = now + timedelta(days=days_ahead)
+
+    saturday = saturday.replace(hour=0, minute=0, second=0, microsecond=0)
+    sunday = saturday + timedelta(days=1)
+    return saturday, sunday
 
 
 # ---------------------------------------------------------------------------
@@ -170,10 +181,9 @@ def scrape_arc(saturday, sunday):
     Playwright is used as fallback.
     """
     results = {'saturday': [], 'sunday': []}
-    # TEMP: use /whatson/all to catch Tue/Wed films (not just kids club)
     urls = [
-        'https://beeston.arccinema.co.uk/whatson/all',
         'https://beeston.arccinema.co.uk/whatson/kidsclub',
+        'https://beeston.arccinema.co.uk/whatson/all',
     ]
 
     for url in urls:
@@ -207,10 +217,9 @@ def scrape_savoy(saturday, sunday):
     Savoy Nottingham kids club page — direct HTML scraping (server-rendered, working).
     """
     results = {'saturday': [], 'sunday': []}
-    # TEMP: try general whatson page first (has Tue/Wed films); kids-club page is Sat-only
     savoy_urls = [
-        'https://savoyonline.co.uk/SavoyNottingham.dll/WhatsOn',
         'https://savoyonline.co.uk/SavoyNottingham.dll/Page?p=6&m=mm&sp=0',
+        'https://savoyonline.co.uk/SavoyNottingham.dll/WhatsOn',
     ]
     try:
         soup = None
