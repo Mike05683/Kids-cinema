@@ -1,19 +1,13 @@
 {
-  "updated": "Sun 22 Mar 2026 at 06:52 UTC",
+  "updated": "Sun 22 Mar 2026 at 13:36 UTC",
   "weekend_dates": {
-    "saturday": "Sat 21 Mar",
-    "sunday": "Sun 22 Mar"
+    "saturday": "Sat 28 Mar",
+    "sunday": "Sun 29 Mar"
   },
   "cinemas": {
     "arc_beeston": {
       "saturday": [],
-      "sunday": [
-        {
-          "title": "Stitch Head",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        }
-      ]
+      "sunday": []
     },
     "showcase_nottingham": {
       "saturday": [],
