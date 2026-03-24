@@ -1,13 +1,35 @@
 {
-  "updated": "Mon 23 Mar 2026 at 14:07 UTC",
+  "updated": "Tue 24 Mar 2026 at 07:04 UTC",
   "weekend_dates": {
     "saturday": "Sat 28 Mar",
     "sunday": "Sun 29 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [],
-      "sunday": []
+      "saturday": [
+        {
+          "title": "A Tooth Fairy Tale",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Show More",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        }
+      ],
+      "sunday": [
+        {
+          "title": "A Tooth Fairy Tale",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        },
+        {
+          "title": "Show More",
+          "time": "11:00",
+          "price": "\u00a33.50"
+        }
+      ]
     },
     "showcase_nottingham": {
       "saturday": [],
@@ -18,7 +40,13 @@
       "sunday": []
     },
     "savoy_nottingham": {
-      "saturday": [],
+      "saturday": [
+        {
+          "title": "Kid's Club",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        }
+      ],
       "sunday": []
     },
     "odeon_derby": {
