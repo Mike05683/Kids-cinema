@@ -1,23 +1,12 @@
 {
-  "updated": "Sat 28 Mar 2026 at 06:59 UTC",
+  "updated": "Sat 28 Mar 2026 at 13:43 UTC",
   "weekend_dates": {
     "saturday": "Sat 28 Mar",
     "sunday": "Sun 29 Mar"
   },
   "cinemas": {
     "arc_beeston": {
-      "saturday": [
-        {
-          "title": "A Tooth Fairy Tale",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        },
-        {
-          "title": "Show More",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        }
-      ],
+      "saturday": [],
       "sunday": [
         {
           "title": "A Tooth Fairy Tale",
