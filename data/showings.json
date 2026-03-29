@@ -1,24 +1,13 @@
 {
-  "updated": "Sun 29 Mar 2026 at 07:03 UTC",
+  "updated": "Sun 29 Mar 2026 at 13:44 UTC",
   "weekend_dates": {
-    "saturday": "Sat 28 Mar",
-    "sunday": "Sun 29 Mar"
+    "saturday": "Sat 04 Apr",
+    "sunday": "Sun 05 Apr"
   },
   "cinemas": {
     "arc_beeston": {
       "saturday": [],
-      "sunday": [
-        {
-          "title": "A Tooth Fairy Tale",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        },
-        {
-          "title": "Show More",
-          "time": "11:00",
-          "price": "\u00a33.50"
-        }
-      ]
+      "sunday": []
     },
     "showcase_nottingham": {
       "saturday": [],
