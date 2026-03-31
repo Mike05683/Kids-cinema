@@ -1,5 +1,5 @@
 {
-  "updated": "Mon 30 Mar 2026 at 14:20 UTC",
+  "updated": "Tue 31 Mar 2026 at 07:14 UTC",
   "weekend_dates": {
     "saturday": "Sat 04 Apr",
     "sunday": "Sun 05 Apr"
@@ -45,9 +45,25 @@
           "title": "Kid's Club",
           "time": "10:00",
           "price": "\u00a33.00"
+        },
+        {
+          "title": "Zootropolis 2",
+          "time": "10:00",
+          "price": "\u00a33.00"
         }
       ],
-      "sunday": []
+      "sunday": [
+        {
+          "title": "Kid's Club",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        },
+        {
+          "title": "Zootropolis 2",
+          "time": "10:00",
+          "price": "\u00a33.00"
+        }
+      ]
     },
     "odeon_derby": {
       "saturday": [],
